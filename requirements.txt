@@ -1,0 +1,14 @@
+# UZI 投研终端 · 依赖清单
+# 运行环境：Python 3.10+
+
+# ── 运行时 ──
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic-settings>=2.0
+
+# ── 可选：实时行情（不安装则自动回退到 demo 数据源）──
+# akshare>=1.12
+
+# ── 测试 ──
+pytest>=8.0
+httpx>=0.27

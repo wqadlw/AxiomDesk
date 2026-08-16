@@ -1,0 +1,27 @@
+UZI Terminal
+Copyright (c) 2026 UZI Terminal Contributors
+
+This product includes methodology derived from UZI-Skill.
+
+  UZI-Skill
+  Copyright (c) FloatFu-true
+  Licensed under the MIT License.
+  Source: https://github.com/wbh604/UZI-Skill
+
+UZI-Skill is an individual-stock deep-analysis skill suite covering:
+  - deep-analysis  (22-dimension data + 66-investor panel + valuation modeling + trap detection)
+  - investor-panel (66 personas across 9 schools of thought)
+  - lhb-analyzer   (dragontiger list / top-traded analysis)
+  - trap-detector  (8-signal pump-and-dump detection)
+
+The analytical engine in this repository (scoring dimensions, investor
+evaluation rules, valuation models, trap signals, narrative generation) is an
+independent reimplementation built from UZI-Skill's published methodology. It
+does not incorporate UZI-Skill source code verbatim; it is provided under the
+MIT License as stated in LICENSE.
+
+Data sources: real-time quotes are fetched directly from public endpoints
+(Tencent / Sina / Eastmoney) or via optional community libraries (akshare,
+efinance, tushare, baostock). When no network or library is available, the
+system falls back to a built-in deterministic demo dataset. Always verify
+against official disclosures before making investment decisions.

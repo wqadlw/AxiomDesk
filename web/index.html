@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UZI 投研终端 · 个股深度分析</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">◈</span>
+      <div>
+        <div class="brand-name">UZI 投研终端</div>
+        <div class="brand-sub">66 位投资大佬 · 机构级建模 · 判断靠 AI</div>
+      </div>
+    </div>
+
+    <form id="query" class="query" autocomplete="off">
+      <input id="ticker" class="q-ticker" placeholder="代码/名称，如 600519 · 宁德时代 · NVDA" />
+      <div class="q-row">
+        <select id="depth" class="q-depth" title="分析深度">
+          <option value="lite">快速 lite</option>
+          <option value="medium">标准 medium</option>
+          <option value="deep" selected>深度 deep</option>
+        </select>
+        <input id="boost" class="q-boost" type="number" min="0" max="4" value="0" title="杀猪盘语境加权 0-4" />
+      </div>
+      <div class="q-row q-opts">
+        <label class="q-ai"><input id="useai" type="checkbox" checked /> 调用 AI 研判</label>
+        <button id="run" type="submit">运行分析</button>
+      </div>
+    </form>
+
+    <nav id="nav" class="nav">
+      <button class="nav-btn active" data-tab="overview"><span class="ni">◉</span>概览</button>
+      <button class="nav-btn" data-tab="pipeline"><span class="ni">⚙</span>分析流水线</button>
+      <button class="nav-btn" data-tab="dims"><span class="ni">▦</span>维度深读</button>
+      <button class="nav-btn" data-tab="jury"><span class="ni">♛</span>66 评委团</button>
+      <button class="nav-btn" data-tab="valuation"><span class="ni">◭</span>估值三角</button>
+      <button class="nav-btn" data-tab="debate"><span class="ni">⇄</span>多空辩论</button>
+      <button class="nav-btn" data-tab="zones"><span class="ni">⛳</span>买入区间</button>
+      <button class="nav-btn" data-tab="risks"><span class="ni">⚠</span>风险与欺诈</button>
+      <button class="nav-btn" data-tab="trap"><span class="ni">🛡</span>杀猪盘检测</button>
+      <div class="nav-div"></div>
+      <button class="nav-btn config-nav" data-tab="config"><span class="ni">⚙</span>接口配置</button>
+    </nav>
+
+    <div class="side-foot">
+      <button id="btn-history" class="ghost-btn">⟳ 历史</button>
+      <button id="btn-compare" class="ghost-btn">⇲ 对比</button>
+      <div id="llm-badge" class="llm-badge" title="研判叙述来源">研判：—</div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <section id="empty" class="empty">
+      <div class="empty-card">
+        <h1>把一只股票，拆给 66 位专家审一遍</h1>
+        <p>终端会跑完 <b>数据采集 → 机构级建模(DCF/Comps/LBO) → 20 维打分 → 66 位投资大佬陪审团 → AI 综合研判</b> 的完整流水线，并给出带冲突感的多空结论与人格化的评委点评。</p>
+        <div class="quick">
+          <span>热门：</span>
+          <button class="chip" data-t="600519">贵州茅台</button>
+          <button class="chip" data-t="300750">宁德时代</button>
+          <button class="chip" data-t="NVDA">英伟达</button>
+          <button class="chip" data-t="000001">平安银行</button>
+          <button class="chip" data-t="00700">腾讯控股</button>
+        </div>
+        <div class="disclaim">数据来源：内置真实个股近似基本面 + 确定性合成（已标注非真实行情）；研判可由 DeepSeek 驱动。仅供研究，非投资建议。</div>
+      </div>
+    </section>
+
+    <section id="loading" class="loading" hidden>
+      <div class="loading-title">正在执行分析流水线…</div>
+      <ol class="pipeline" id="pipeline-load"></ol>
+      <div class="loading-note" id="loading-note"></div>
+    </section>
+
+    <section id="report" class="report" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name" id="rh-name">—</div>
+          <div class="rh-sub" id="rh-sub">—</div>
+        </div>
+        <div class="rh-right">
+          <span class="rh-price" id="rh-price">—</span>
+          <span id="rh-verdict" class="verdict watch">—</span>
+        </div>
+      </div>
+
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-overview"></div>
+        <div class="tab-panel" id="tab-pipeline" hidden></div>
+        <div class="tab-panel" id="tab-dims" hidden></div>
+        <div class="tab-panel" id="tab-jury" hidden></div>
+        <div class="tab-panel" id="tab-valuation" hidden></div>
+        <div class="tab-panel" id="tab-debate" hidden></div>
+        <div class="tab-panel" id="tab-zones" hidden></div>
+        <div class="tab-panel" id="tab-risks" hidden></div>
+        <div class="tab-panel" id="tab-trap" hidden></div>
+        <div class="tab-panel" id="tab-config" hidden></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 历史抽屉 -->
+  <div id="history-drawer" class="drawer" hidden>
+    <div class="drawer-head"><span>分析历史</span><button id="history-close" class="x">✕</button></div>
+    <div id="history-list" class="drawer-list"></div>
+  </div>
+  <div id="drawer-mask" class="mask" hidden></div>
+
+  <!-- 对比弹窗 -->
+  <div id="compare-modal" class="modal" hidden>
+    <div class="modal-head"><span>多标的横向对比</span><button id="compare-close" class="x">✕</button></div>
+    <div class="modal-body">
+      <div class="cmp-input">
+        <input id="cmp-tickers" placeholder="逗号分隔，最多 5 只：600519,300750,000001" />
+        <select id="cmp-depth"><option value="lite">lite</option><option value="medium" selected>medium</option><option value="deep">deep</option></select>
+        <button id="cmp-run">对比</button>
+      </div>
+      <div id="cmp-result"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
