@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """轻量级 TTL 缓存 · 内存 + 可选磁盘持久化。
 
 - 避免对数据源的重复抓取与速率限制风险
 - 进程重启后仍可从磁盘冷启动（仅当 cache_dir 非空）
 - 纯 stdlib，无第三方依赖
 """
+
 from __future__ import annotations
 
 import json

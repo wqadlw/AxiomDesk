@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """东方财富实时数据源（零依赖 · 部分网络环境可用，默认不启用）。
 
 接口：https://push2.eastmoney.com/api/qt/stock/get?secid={secid}&fields=...&fltt=1
@@ -6,14 +5,14 @@
   本项目把它作为「可选真实源」，默认 disabled，启用后失败会优雅降级到下一源。
   secid：上海=1.{code}，深圳=0.{code}，港股=116.{code}
 """
+
 from __future__ import annotations
 
 import json
 
 from .base import DataProvider, ProviderError
-from .http_base import http_get, to_float, secid_for
 from .demo import DEMO
-
+from .http_base import http_get, secid_for, to_float
 
 _EM_FIELDS = "f12,f13,f14,f43,f44,f45,f46,f47,f48,f57,f58,f60,f116,f117,f162,f167,f168,f171,f173"
 
@@ -29,11 +28,17 @@ class EastMoneyDataProvider(DataProvider):
         return True
 
     def _quote(self, secid: str) -> dict:
-        url = (f"https://push2.eastmoney.com/api/qt/stock/get?secid={secid}"
-               f"&fields={_EM_FIELDS}&fltt=1&invt=2&ut=fa5fd1943c7b386f172d6893dbfba10b")
-        txt = http_get(url, timeout=self.timeout, proxy=self.proxy,
-                       headers={"Referer": "https://quote.eastmoney.com/", "Origin": "https://quote.eastmoney.com"},
-                       encoding="utf-8")
+        url = (
+            f"https://push2.eastmoney.com/api/qt/stock/get?secid={secid}"
+            f"&fields={_EM_FIELDS}&fltt=1&invt=2&ut=fa5fd1943c7b386f172d6893dbfba10b"
+        )
+        txt = http_get(
+            url,
+            timeout=self.timeout,
+            proxy=self.proxy,
+            headers={"Referer": "https://quote.eastmoney.com/", "Origin": "https://quote.eastmoney.com"},
+            encoding="utf-8",
+        )
         d = json.loads(txt)
         data = d.get("data")
         if not data or data.get("f43") in (None, "-", ""):
@@ -72,24 +77,64 @@ class EastMoneyDataProvider(DataProvider):
         shares_yi = (mcap_yi / price) if price else 0
 
         profile = {
-            "name": q["name"], "market": "A", "industry": "未知", "unit": "RMB亿",
-            "price": price, "shares_yi": shares_yi, "mcap_yi": mcap_yi,
-            "revenue_yi": 0, "net_margin": 0, "fcf_yi": None, "ebitda_yi": None,
-            "total_debt_yi": 0, "cash_yi": 0, "equity_yi": 0,
-            "eps": 0, "bvps": (price / q["pb"]) if q["pb"] else 0,
-            "pe": q["pe"], "pb": q["pb"], "ps": q.get("ps", 0),
-            "roe": 0, "rev_growth": 0, "debt_ratio": 0, "moat": 5.0,
-            "momentum": 0.0, "volatility": 0.3, "beta": 1.0,
-            "instr_ratio": 40, "sentiment": 5.0, "lhb_count": 0,
+            "name": q["name"],
+            "market": "A",
+            "industry": "未知",
+            "unit": "RMB亿",
+            "price": price,
+            "shares_yi": shares_yi,
+            "mcap_yi": mcap_yi,
+            "revenue_yi": 0,
+            "net_margin": 0,
+            "fcf_yi": None,
+            "ebitda_yi": None,
+            "total_debt_yi": 0,
+            "cash_yi": 0,
+            "equity_yi": 0,
+            "eps": 0,
+            "bvps": (price / q["pb"]) if q["pb"] else 0,
+            "pe": q["pe"],
+            "pb": q["pb"],
+            "ps": q.get("ps", 0),
+            "roe": 0,
+            "rev_growth": 0,
+            "debt_ratio": 0,
+            "moat": 5.0,
+            "momentum": 0.0,
+            "volatility": 0.3,
+            "beta": 1.0,
+            "instr_ratio": 40,
+            "sentiment": 5.0,
+            "lhb_count": 0,
             "source": "东方财富实时行情",
         }
         code = ticker.strip().upper()
         cur = DEMO.get(code) or DEMO.get(code[-6:])
         if cur:
-            for k in ("revenue_yi", "net_margin", "fcf_yi", "ebitda_yi", "total_debt_yi",
-                      "cash_yi", "equity_yi", "roe", "rev_growth", "debt_ratio", "moat",
-                      "industry", "beta", "instr_ratio", "sentiment", "lhb_count",
-                      "is_financial", "is_tech", "is_ai", "is_liquor", "is_new_energy", "is_cyclical"):
+            for k in (
+                "revenue_yi",
+                "net_margin",
+                "fcf_yi",
+                "ebitda_yi",
+                "total_debt_yi",
+                "cash_yi",
+                "equity_yi",
+                "roe",
+                "rev_growth",
+                "debt_ratio",
+                "moat",
+                "industry",
+                "beta",
+                "instr_ratio",
+                "sentiment",
+                "lhb_count",
+                "is_financial",
+                "is_tech",
+                "is_ai",
+                "is_liquor",
+                "is_new_energy",
+                "is_cyclical",
+            ):
                 if k in cur and cur[k] not in (0, None, ""):
                     profile[k] = cur[k]
             profile["source"] = "东方财富实时行情 + 内置近似基本面兜底"
@@ -100,6 +145,7 @@ class EastMoneyDataProvider(DataProvider):
 
     def ping(self) -> float:
         import time
+
         t0 = time.time()
         self._quote("1.600519")
         return time.time() - t0

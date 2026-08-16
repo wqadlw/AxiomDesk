@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """统一异常与处理器。
 
 所有业务异常继承 AppError；注册后由 FastAPI 统一转换为带 request_id 的
 结构化 JSON 响应，便于前端与日志系统消费。
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI, Request
@@ -43,8 +43,13 @@ class UpstreamError(AppError):
 
 
 def _handler(request: Request, exc: AppError) -> JSONResponse:
-    logger.warning("request failed: rid=%s status=%s code=%s msg=%s",
-                   getattr(request.state, "request_id", "-"), exc.status_code, exc.code, exc.message)
+    logger.warning(
+        "request failed: rid=%s status=%s code=%s msg=%s",
+        getattr(request.state, "request_id", "-"),
+        exc.status_code,
+        exc.code,
+        exc.message,
+    )
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": exc.message, "code": exc.code, "request_id": getattr(request.state, "request_id", "-")},
@@ -59,6 +64,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         logger.exception("unhandled exception: rid=%s", getattr(request.state, "request_id", "-"))
         return JSONResponse(
             status_code=500,
-            content={"error": "内部错误，请稍后重试", "code": "internal_error",
-                     "request_id": getattr(request.state, "request_id", "-")},
+            content={
+                "error": "内部错误，请稍后重试",
+                "code": "internal_error",
+                "request_id": getattr(request.state, "request_id", "-"),
+            },
         )

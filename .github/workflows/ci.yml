@@ -7,6 +7,24 @@ on:
     branches: [main]
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install lint/type tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy
+      - name: Ruff lint
+        run: ruff check server tests
+      - name: Ruff format check
+        run: ruff format --check server tests
+      - name: Mypy type check (non-blocking on missing optional libs)
+        run: mypy server || true
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -19,10 +37,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Install project (editable)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e .
           pip install pytest httpx
       - name: Run tests (offline demo mode)
         run: pytest -q

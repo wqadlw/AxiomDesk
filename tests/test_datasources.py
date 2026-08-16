@@ -1,19 +1,21 @@
-# -*- coding: utf-8 -*-
 """真实数据源（HTTP 直连 + 可选包）与 failover 工厂测试。
 
 原则：
   - 结构性断言始终运行（provider 数量、字段完整性、chain 构建、配置读写）
   - 真实联网断言做了「网络不可用就跳过」的守卫，避免 CI 无网时红
 """
+
 from __future__ import annotations
 
 import os
+
 import pytest
 
 
 # ───────── 配置存储 / 注册表 ─────────
 def test_default_providers_present():
     from server.config_store import _default_config
+
     cfg = _default_config()
     ids = list(cfg["providers"].keys())
     assert ids == ["tencent", "sina", "eastmoney", "akshare", "efinance", "tushare", "baostock"]
@@ -28,6 +30,7 @@ def test_default_providers_present():
 
 def test_provider_status_counts():
     from server.config_store import provider_status
+
     st = provider_status()
     assert len(st) == 7
     by_id = {s["id"]: s for s in st}
@@ -40,7 +43,8 @@ def test_provider_status_counts():
 
 
 def test_config_save_reload_roundtrip(tmp_path, monkeypatch):
-    from server.config_store import load_config, set_config, get_config, invalidate
+    from server.config_store import get_config, invalidate, load_config, set_config
+
     monkeypatch.setenv("UZI_CONFIG", str(tmp_path / "config.json"))
     invalidate()
     cfg = load_config()
@@ -57,6 +61,7 @@ def test_config_save_reload_roundtrip(tmp_path, monkeypatch):
 def test_factory_demo_returns_demo(monkeypatch):
     monkeypatch.setenv("UZI_DATA_SOURCE", "demo")
     from server.providers.factory import get_provider, reload_provider
+
     reload_provider()
     p = get_provider()
     prof = p.get_profile("600519")
@@ -68,6 +73,7 @@ def test_factory_demo_returns_demo(monkeypatch):
 def test_factory_auto_builds_chain(monkeypatch):
     monkeypatch.setenv("UZI_DATA_SOURCE", "auto")
     from server.providers.factory import get_provider, reload_provider
+
     reload_provider()
     p = get_provider()
     # auto 模式下链路至少包含 tencent / sina 这类直连源
@@ -91,6 +97,7 @@ def _walk_types(p, acc=None):
 def test_factory_specific_provider(monkeypatch):
     monkeypatch.setenv("UZI_DATA_SOURCE", "tencent")
     from server.providers.factory import get_provider, reload_provider
+
     reload_provider()
     p = get_provider()
     types = _walk_types(p)
@@ -100,8 +107,8 @@ def test_factory_specific_provider(monkeypatch):
 
 # ───────── 腾讯直连源（真实联网，失败则跳过）─────────
 def test_tencent_live_profile():
-    from server.providers.tencent_provider import TencentDataProvider
     from server.providers.base import ProviderError
+    from server.providers.tencent_provider import TencentDataProvider
 
     t = TencentDataProvider()
     try:
@@ -117,8 +124,8 @@ def test_tencent_live_profile():
 
 
 def test_tencent_unknown_falls_back():
-    from server.providers.tencent_provider import TencentDataProvider
     from server.providers.base import ProviderError
+    from server.providers.tencent_provider import TencentDataProvider
 
     t = TencentDataProvider()
     # 美股代码不在 A/港范围内 → 应抛 ProviderError（交由 fallback）
@@ -128,8 +135,8 @@ def test_tencent_unknown_falls_back():
 
 # ───────── 可选包 provider（未安装应优雅跳过）─────────
 def test_optional_provider_unavailable_gracefully():
-    from server.providers.optional_providers import TushareDataProvider, EfinanceDataProvider, BaostockDataProvider
     from server.providers.base import ProviderError
+    from server.providers.optional_providers import BaostockDataProvider, EfinanceDataProvider, TushareDataProvider
 
     # 默认环境未安装这些库 → is_available() 应为 False
     assert EfinanceDataProvider().is_available() is False

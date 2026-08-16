@@ -45,15 +45,21 @@ FastAPI 应用 (server/app.py)
 
 ```bash
 # 1. 安装依赖（仅 FastAPI/uvicorn/pydantic-settings；可选装 akshare 启用更多实时源）
-pip install -r requirements.txt
+#    开发模式（含 ruff/mypy/pytest 等质量门禁）：
+pip install -e ".[dev]"
+#    或仅运行时（等价于 requirements.txt）：
+pip install -e .
 
 # 2. 启动（默认 127.0.0.1:8137）
 python -m uvicorn server.app:app --host 0.0.0.0 --port 8137
-# 或： python -m server.app
+# 或： python -m server.app   /   uzi-terminal
 
 # 3. 打开浏览器
 #    http://127.0.0.1:8137/
 ```
+
+> 工程化：依赖与工具配置统一收敛于 `pyproject.toml`（含 `ruff` / `black` / `isort` / `mypy` / `pytest`）。
+> 本地开发建议安装 pre-commit：`pre-commit install`（见 `.pre-commit-config.yaml`）。
 
 ### 方式二：Docker
 
@@ -95,6 +101,16 @@ start.bat         # Windows 双击
 
 > 环境变量 `UZI_DATA_SOURCE` 可强制覆盖（便于容器注入 / 测试离线）。
 
+### 数据溯源与基本面估算（诚实化设计）
+
+为避免「假自信」的深度分析，系统对数据来源做透明标注：
+
+- **行情实时**：腾讯/新浪返回真实 `现价 / PE / PB / 市值 / 动量 / 波动率`。
+- **基本面派生**：当数据源未提供完整财报时（绝大多数 A 股默认如此），系统由实时 `PE/PB` **严格推导** `EPS = 现价/PE`、`BVPS = 现价/PB`、`ROE ≈ PB/PE`（TTM 恒等式），使 66 维评分与估值有真实锚点，而非跑在 0 值上。
+- **溯源徽标**：每份报告头部标注 `live`（行情+基本面均实时）/ `estimated`（行情实时、基本面由 PE/PB 估算）/ `demo`（离线合成），并在基本面为估算/演示时给出醒目免责声明。
+
+> 这意味着：任意有实时行情的 A 股都能得到**有意义且诚实**的分析；若需完整财报级基本面（营收/净利/FCF/负债等），请接入 `akshare` 等数据源。
+
 ---
 
 ## 🔌 API 概览
@@ -124,8 +140,9 @@ start.bat         # Windows 双击
 # 后端（pytest，强制离线 demo 模式，不污染仓库）
 pytest -q
 
-# 可选：前端无头冒烟（需 node）
-# node test/test.js   # 见仓库 test/ 目录
+# 代码门禁（lint / format / type）
+ruff check server/ tests/
+ruff format --check server/ tests/
 ```
 
 > 测试通过 `conftest.py` 在导入前设置 `UZI_DATA_SOURCE=demo` 与临时 `UZI_CONFIG`，保证确定性且不影响仓库 `config.json`。
@@ -137,6 +154,7 @@ pytest -q
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 分层架构、请求生命周期、数据契约、部署
 - [docs/METHODOLOGY.md](docs/METHODOLOGY.md) — 方法论溯源与保真度说明（含对 UZI-Skill 的署名）
 - [docs/API.md](docs/API.md) — 完整 API 参考
+- [CHANGELOG.md](CHANGELOG.md) — 版本与变更记录
 
 ---
 

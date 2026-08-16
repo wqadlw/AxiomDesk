@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """UZI 投研终端 · FastAPI 应用工厂。
 
 运行：
@@ -6,27 +5,29 @@
     uvicorn server.app:app --host 0.0.0.0 --port 8137
 前端：挂载 server/../web 为静态资源（/, /app.js, /style.css ...）
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 try:  # 作为包导入（推荐：python -m server.app / tests）
-    from .config import settings
-    from .logging_setup import get_logger, setup_logging
-    from .api.routes import router, router_v1
     from .api.errors import register_exception_handlers
     from .api.middleware import add_middleware
+    from .api.routes import router, router_v1
+    from .config import settings
+    from .logging_setup import get_logger, setup_logging
 except ImportError:  # 作为脚本直接运行（python server/app.py）
     import sys
     from pathlib import Path as _P
+
     # 把 server/ 的【父目录】加入 sys.path，使本模块以 `server` 包的形式被导入，
     # 这样子模块里的相对导入（from .config / from ..engine 等）都能正确解析。
     sys.path.insert(0, str(_P(__file__).parent.parent))
-    from server.config import settings  # type: ignore
-    from server.logging_setup import get_logger, setup_logging  # type: ignore
-    from server.api.routes import router, router_v1  # type: ignore
     from server.api.errors import register_exception_handlers  # type: ignore
     from server.api.middleware import add_middleware  # type: ignore
+    from server.api.routes import router, router_v1  # type: ignore
+    from server.config import settings  # type: ignore
+    from server.logging_setup import get_logger, setup_logging  # type: ignore
 
 from contextlib import asynccontextmanager
 
@@ -46,7 +47,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     setup_logging()
-    log = get_logger("app")
+    get_logger("app")
 
     app = FastAPI(
         title=settings.app_name,
@@ -78,7 +79,8 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """控制台入口（``pip install`` 后可用 ``uzi-terminal`` 启动）。"""
     import uvicorn
 
     uvicorn.run(
@@ -87,3 +89,7 @@ if __name__ == "__main__":
         port=settings.port,
         log_level=settings.log_level.lower(),
     )
+
+
+if __name__ == "__main__":
+    run()

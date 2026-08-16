@@ -1,17 +1,29 @@
-# -*- coding: utf-8 -*-
 """引擎层测试 · 确定性、结构完整性、评分映射、深度采样、陷阱与多空分歧。"""
+
 from __future__ import annotations
 
 import json
 
-from server.engine import engine, investors as INV, valuation as VAL
 from server.engine import data_provider as DP
+from server.engine import engine
+from server.engine import investors as INV
+from server.engine import valuation as VAL
 
 
 def test_analyze_full_structure():
     r = engine.analyze("600519", depth="deep", use_ai=False)
-    for k in ["meta", "overall_score", "verdict", "dimensions", "valuation",
-              "panel_summary", "panel", "trap", "great_divide", "depth"]:
+    for k in [
+        "meta",
+        "overall_score",
+        "verdict",
+        "dimensions",
+        "valuation",
+        "panel_summary",
+        "panel",
+        "trap",
+        "great_divide",
+        "depth",
+    ]:
         assert k in r, f"分析报告缺少字段: {k}"
     assert r["depth"] == "deep"
     assert r["meta"]["name"] == "贵州茅台"
@@ -22,8 +34,7 @@ def test_analyze_full_structure():
 def test_analyze_deterministic():
     a = engine.analyze("600519", depth="deep", use_ai=False)
     b = engine.analyze("600519", depth="deep", use_ai=False)
-    assert json.dumps(a, sort_keys=True, ensure_ascii=False) == \
-        json.dumps(b, sort_keys=True, ensure_ascii=False)
+    assert json.dumps(a, sort_keys=True, ensure_ascii=False) == json.dumps(b, sort_keys=True, ensure_ascii=False)
 
 
 def test_overall_verdict_mapping():

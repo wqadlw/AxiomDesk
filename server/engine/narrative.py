@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """研判叙述服务 · 让大模型"像 UZI-Skill 那样"分析一支股票并得出有冲突感、有洞察的结论。
 
 这是把原 Skill 的"判断层"（Task 2 维度定性评语 + Task 4 综合研判叙事）实打实补回来的地方。
@@ -17,18 +16,25 @@ Prompt 严格编码了原 SKILL.md 的硬门控：
   - 风险≥3 条且具体到数字/事件
   - 事实核查：只能引用下方给出的数据，禁止编造未出现的业务/财务/政策
 """
+
 from __future__ import annotations
 
 import json
 import re
-from typing import Any
 
-from . import personas
 from ..llm import TemplateProvider, get_llm
+from . import personas
 
 # 输出 schema 的字段约束（用于校验与兜底）
-_REQUIRED = ["dim_commentary", "panel_insights", "great_divide", "core_conclusion",
-             "risks", "buy_zones", "valuation_interpretation"]
+_REQUIRED = [
+    "dim_commentary",
+    "panel_insights",
+    "great_divide",
+    "core_conclusion",
+    "risks",
+    "buy_zones",
+    "valuation_interpretation",
+]
 _BUY_ZONE_KEYS = ["value", "growth", "technical", "youzi"]
 
 _SYSTEM_PROMPT = """你是一位**首席股票分析师**，正在使用一套量化工具箱分析个股。工具箱已经算好了原始数据、维度打分、估值建模、66 位投资大佬的量化裁决、杀猪盘检测和多空分歧骨架——但**最终的判断和叙事必须由你写**。
@@ -69,30 +75,58 @@ _SYSTEM_PROMPT = """你是一位**首席股票分析师**，正在使用一套�
 def _features_from_meta(meta: dict) -> dict:
     """从 result.meta 重建 personas 模块需要的 features 子集（离线叙事无需重算）。"""
     return {
-        "roe": meta.get("roe", 0), "net_margin": meta.get("net_margin", 0),
-        "debt_ratio": meta.get("debt_ratio", 0), "fcf_latest_yi": meta.get("fcf_yi"),
-        "momentum": meta.get("momentum", 0), "volatility": meta.get("volatility", 0.3),
-        "revenue_growth": meta.get("revenue_growth", 8), "pe": meta.get("pe", 20),
+        "roe": meta.get("roe", 0),
+        "net_margin": meta.get("net_margin", 0),
+        "debt_ratio": meta.get("debt_ratio", 0),
+        "fcf_latest_yi": meta.get("fcf_yi"),
+        "momentum": meta.get("momentum", 0),
+        "volatility": meta.get("volatility", 0.3),
+        "revenue_growth": meta.get("revenue_growth", 8),
+        "pe": meta.get("pe", 20),
         "moat": meta.get("moat", 5),
-        "ai_theme": meta.get("ai_theme"), "is_tech": meta.get("is_tech"),
-        "is_financial": meta.get("is_financial"), "is_new_energy": meta.get("is_new_energy"),
-        "is_hot_theme": meta.get("is_hot_theme"), "lhb_count": meta.get("lhb_count", 0),
-        "sentiment": meta.get("sentiment", 5), "institutional_ratio": meta.get("institutional_ratio", 40),
-        "name": meta.get("name"), "price": meta.get("price", 0), "mcap_yi": meta.get("mcap", 0),
+        "ai_theme": meta.get("ai_theme"),
+        "is_tech": meta.get("is_tech"),
+        "is_financial": meta.get("is_financial"),
+        "is_new_energy": meta.get("is_new_energy"),
+        "is_hot_theme": meta.get("is_hot_theme"),
+        "lhb_count": meta.get("lhb_count", 0),
+        "sentiment": meta.get("sentiment", 5),
+        "institutional_ratio": meta.get("institutional_ratio", 40),
+        "name": meta.get("name"),
+        "price": meta.get("price", 0),
+        "mcap_yi": meta.get("mcap", 0),
     }
 
 
 def _compact_context(result: dict) -> str:
     meta = result.get("meta", {})
     lines = []
-    lines.append("【标的】%s (%s) | 市场:%s | 行业:%s | 来源:%s" % (
-        meta.get("name", "?"), meta.get("ticker", "?"), meta.get("market", "?"),
-        meta.get("industry", "?"), meta.get("source", "?")))
-    lines.append("【行情】现价¥%s | 市值%.0f%s | PE%s | PB%s | PS%s | 营收增速%s%% | ROE%s%% | 净利率%s%% | 负债率%s%% | 动量%s" % (
-        meta.get("price", "?"), meta.get("mcap", 0) or 0, meta.get("mcap_unit", "亿"),
-        meta.get("pe", "?"), meta.get("pb", "?"), meta.get("ps", "?"),
-        meta.get("revenue_growth", "?"), meta.get("roe", "?"), meta.get("net_margin", "?"),
-        round((meta.get("debt_ratio") or 0) * 100, 1), meta.get("momentum", 0)))
+    lines.append(
+        "【标的】%s (%s) | 市场:%s | 行业:%s | 来源:%s"
+        % (
+            meta.get("name", "?"),
+            meta.get("ticker", "?"),
+            meta.get("market", "?"),
+            meta.get("industry", "?"),
+            meta.get("source", "?"),
+        )
+    )
+    lines.append(
+        "【行情】现价¥%s | 市值%.0f%s | PE%s | PB%s | PS%s | 营收增速%s%% | ROE%s%% | 净利率%s%% | 负债率%s%% | 动量%s"
+        % (
+            meta.get("price", "?"),
+            meta.get("mcap", 0) or 0,
+            meta.get("mcap_unit", "亿"),
+            meta.get("pe", "?"),
+            meta.get("pb", "?"),
+            meta.get("ps", "?"),
+            meta.get("revenue_growth", "?"),
+            meta.get("roe", "?"),
+            meta.get("net_margin", "?"),
+            round((meta.get("debt_ratio") or 0) * 100, 1),
+            meta.get("momentum", 0),
+        )
+    )
     lines.append("【综合】评分 %s/10 · 结论「%s」" % (result.get("overall_score", "?"), result.get("verdict", "?")))
 
     lines.append("【20维打分】")
@@ -104,32 +138,53 @@ def _compact_context(result: dict) -> str:
     comps = val.get("comps", {}) or {}
     lbo = val.get("lbo", {}) or {}
     lines.append("【估值三角】")
-    lines.append("  - DCF: 每股内在价 ¥%s，安全边际 %s%%，结论「%s」" % (
-        dcf.get("intrinsic_per_share", "—"), dcf.get("safety_margin_pct", "—"), dcf.get("verdict", "—")))
-    lines.append("  - Comps: 隐含价 ¥%s，结论「%s」" % (
-        comps.get("implied_price", {}).get("via_median_pe", "—"), comps.get("valuation_verdict", "—")))
+    lines.append(
+        "  - DCF: 每股内在价 ¥%s，安全边际 %s%%，结论「%s」"
+        % (dcf.get("intrinsic_per_share", "—"), dcf.get("safety_margin_pct", "—"), dcf.get("verdict", "—"))
+    )
+    lines.append(
+        "  - Comps: 隐含价 ¥%s，结论「%s」"
+        % (comps.get("implied_price", {}).get("via_median_pe", "—"), comps.get("valuation_verdict", "—"))
+    )
     lines.append("  - LBO: IRR %s%%，结论「%s」" % (lbo.get("irr_pct", "—"), lbo.get("verdict", "—")))
     lines.append("  - 综合公允价 ¥%s（锚:%s）" % (val.get("fair_price", "—"), val.get("fair_method", "—")))
 
     summ = result.get("panel_summary", {}) or {}
-    lines.append("【66评委汇总】总数%s | 看多%s | 看空%s | 中性%s | 多头共识%s%%" % (
-        summ.get("total", 0), summ.get("bullish", 0), summ.get("bearish", 0),
-        summ.get("neutral", 0), summ.get("panel_consensus", 0)))
+    lines.append(
+        "【66评委汇总】总数%s | 看多%s | 看空%s | 中性%s | 多头共识%s%%"
+        % (
+            summ.get("total", 0),
+            summ.get("bullish", 0),
+            summ.get("bearish", 0),
+            summ.get("neutral", 0),
+            summ.get("panel_consensus", 0),
+        )
+    )
 
     lines.append("【评委代表（含 signal/score/评语）】")
     panel = result.get("panel", []) or []
     # 看多最高分 与 看空最低分 各取 2 人，给出代表样本
     bullish = sorted([p for p in panel if p.get("signal") == "bullish"], key=lambda p: p.get("score", 0), reverse=True)
     bearish = sorted([p for p in panel if p.get("signal") == "bearish"], key=lambda p: p.get("score", 0))
-    sample = (bullish[:2] + bearish[:2])
+    sample = bullish[:2] + bearish[:2]
     for p in sample:
-        lines.append("  - %s(%s/%s): %s | %s | %s" % (
-            p.get("name"), p.get("group"), p.get("group_name"), p.get("signal"),
-            p.get("score"), (p.get("comment") or "")[:60]))
+        lines.append(
+            "  - %s(%s/%s): %s | %s | %s"
+            % (
+                p.get("name"),
+                p.get("group"),
+                p.get("group_name"),
+                p.get("signal"),
+                p.get("score"),
+                (p.get("comment") or "")[:60],
+            )
+        )
 
     trap = result.get("trap", {}) or {}
-    lines.append("【杀猪盘检测】%s | 加权命中%s | %s" % (
-        trap.get("trap_level", "—"), trap.get("weighted_hits", 0), trap.get("recommendation", "")))
+    lines.append(
+        "【杀猪盘检测】%s | 加权命中%s | %s"
+        % (trap.get("trap_level", "—"), trap.get("weighted_hits", 0), trap.get("recommendation", ""))
+    )
 
     gd = result.get("great_divide", {}) or {}
     lines.append("【多空分歧骨架】%s" % gd.get("punchline", ""))
@@ -237,7 +292,6 @@ def generate_narrative(result: dict, llm=None, *, timeout: float = 60) -> dict:
     返回 dict（固定 schema），并附 _source 字段标明来自 deepseek 还是 template。
     """
     llm = llm or get_llm()
-    source = llm.name
 
     if not getattr(llm, "online", False):
         # 离线 Provider（模板）：用带人格声纹的离线模板，不走 complete()
@@ -250,8 +304,7 @@ def generate_narrative(result: dict, llm=None, *, timeout: float = 60) -> dict:
             + context
             + "\n\n请只输出符合 schema 的 JSON。"
         )
-        raw = llm.complete(_SYSTEM_PROMPT, user_prompt, max_tokens=2400,
-                          temperature=0.35, timeout=timeout)
+        raw = llm.complete(_SYSTEM_PROMPT, user_prompt, max_tokens=2400, temperature=0.35, timeout=timeout)
         parsed = _extract_json(raw)
         if parsed is None:
             raise ValueError("DeepSeek 未返回可解析 JSON")

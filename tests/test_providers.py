@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 """数据层测试 · 32 只内置个股、合成兜底、failover 回退、离线 real-chain 降级。"""
+
 from __future__ import annotations
 
 import pytest
 
 from server.providers.base import DataProvider, ProviderError, derive_features
-from server.providers.demo import DemoDataProvider, DEMO
+from server.providers.demo import DEMO, DemoDataProvider
 from server.providers.factory import FallbackProvider, _build_chain
 
 
@@ -36,8 +36,7 @@ def test_demo_peers_industry_or_synthetic():
 
 def test_derive_features_keys():
     f = derive_features(DemoDataProvider().get_profile("600519"))
-    for k in ["price", "market_cap_yi", "roe", "moat", "is_tech",
-              "is_liquor", "is_sector_leader", "is_hot_theme"]:
+    for k in ["price", "market_cap_yi", "roe", "moat", "is_tech", "is_liquor", "is_sector_leader", "is_hot_theme"]:
         assert k in f
 
 

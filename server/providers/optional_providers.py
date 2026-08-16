@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """可选真实数据源（需用户自行 pip install，默认不启用）。
 
 这些 provider 仅做「可安装即启用」的适配器：库未安装 / token 缺失 / 调用失败
@@ -9,11 +8,12 @@
   - TushareDataProvider   : tushare（需 token，机构级财务/行情）
   - BaostockDataProvider  : baostock（免费 A 股历史行情）
 """
+
 from __future__ import annotations
 
 from .base import DataProvider, ProviderError
-from .http_base import to_float
 from .demo import DEMO
+from .http_base import to_float
 
 
 def _ts_code(ticker: str) -> str:
@@ -33,6 +33,7 @@ class EfinanceDataProvider(DataProvider):
     def is_available(self) -> bool:
         try:
             import efinance  # noqa: F401
+
             return True
         except Exception:
             return False
@@ -55,21 +56,63 @@ class EfinanceDataProvider(DataProvider):
             raise ProviderError("efinance 价格无效")
         mcap_yi = to_float(r.get("总市值")) / 1e8
         profile = {
-            "name": str(r.get("股票名称", code)), "market": "A", "industry": "未知", "unit": "RMB亿",
-            "price": price, "shares_yi": (mcap_yi / price if price else 0), "mcap_yi": mcap_yi,
-            "revenue_yi": 0, "net_margin": 0, "fcf_yi": None, "ebitda_yi": None,
-            "total_debt_yi": 0, "cash_yi": 0, "equity_yi": 0,
-            "eps": 0, "bvps": 0, "pe": to_float(r.get("市盈率-TTM")), "pb": to_float(r.get("市净率")), "ps": 0,
-            "roe": 0, "rev_growth": 0, "debt_ratio": 0, "moat": 5.0,
-            "momentum": 0.0, "volatility": 0.3, "beta": 1.0,
-            "instr_ratio": 40, "sentiment": 5.0, "lhb_count": 0, "source": "efinance 实时行情",
+            "name": str(r.get("股票名称", code)),
+            "market": "A",
+            "industry": "未知",
+            "unit": "RMB亿",
+            "price": price,
+            "shares_yi": (mcap_yi / price if price else 0),
+            "mcap_yi": mcap_yi,
+            "revenue_yi": 0,
+            "net_margin": 0,
+            "fcf_yi": None,
+            "ebitda_yi": None,
+            "total_debt_yi": 0,
+            "cash_yi": 0,
+            "equity_yi": 0,
+            "eps": 0,
+            "bvps": 0,
+            "pe": to_float(r.get("市盈率-TTM")),
+            "pb": to_float(r.get("市净率")),
+            "ps": 0,
+            "roe": 0,
+            "rev_growth": 0,
+            "debt_ratio": 0,
+            "moat": 5.0,
+            "momentum": 0.0,
+            "volatility": 0.3,
+            "beta": 1.0,
+            "instr_ratio": 40,
+            "sentiment": 5.0,
+            "lhb_count": 0,
+            "source": "efinance 实时行情",
         }
         cur = DEMO.get(ticker.strip().upper()) or DEMO.get(code)
         if cur:
-            for k in ("revenue_yi", "net_margin", "fcf_yi", "ebitda_yi", "total_debt_yi", "cash_yi",
-                      "equity_yi", "roe", "rev_growth", "debt_ratio", "moat", "industry", "beta",
-                      "instr_ratio", "sentiment", "lhb_count",
-                      "is_financial", "is_tech", "is_ai", "is_liquor", "is_new_energy", "is_cyclical"):
+            for k in (
+                "revenue_yi",
+                "net_margin",
+                "fcf_yi",
+                "ebitda_yi",
+                "total_debt_yi",
+                "cash_yi",
+                "equity_yi",
+                "roe",
+                "rev_growth",
+                "debt_ratio",
+                "moat",
+                "industry",
+                "beta",
+                "instr_ratio",
+                "sentiment",
+                "lhb_count",
+                "is_financial",
+                "is_tech",
+                "is_ai",
+                "is_liquor",
+                "is_new_energy",
+                "is_cyclical",
+            ):
                 if k in cur and cur[k] not in (0, None, ""):
                     profile[k] = cur[k]
             profile["source"] = "efinance 实时行情 + 内置近似基本面兜底"
@@ -80,6 +123,7 @@ class EfinanceDataProvider(DataProvider):
 
     def ping(self) -> float:
         import time
+
         t0 = time.time()
         self.get_profile("600519")
         return time.time() - t0
@@ -96,6 +140,7 @@ class TushareDataProvider(DataProvider):
     def is_available(self) -> bool:
         try:
             import tushare  # noqa: F401
+
             return bool(self.token)
         except Exception:
             return False
@@ -114,29 +159,74 @@ class TushareDataProvider(DataProvider):
             basic = pro.stock_basic(ts_code=ts_code, fields="name,industry")
             name = basic.iloc[0]["name"] if len(basic) else ticker
             industry = str(basic.iloc[0]["industry"]) if len(basic) else "未知"
-            db = pro.daily_basic(ts_code=ts_code, fields="trade_date,close,pe,pb,total_mv,circ_mv,turnover_rate",
-                                 order_by="trade_date desc", limit=1)
+            db = pro.daily_basic(
+                ts_code=ts_code,
+                fields="trade_date,close,pe,pb,total_mv,circ_mv,turnover_rate",
+                order_by="trade_date desc",
+                limit=1,
+            )
             if db is None or len(db) == 0:
                 raise ProviderError("tushare daily_basic 无数据")
             row = db.iloc[0]
             price = to_float(row["close"])
             mcap_yi = to_float(row["total_mv"]) / 1e4  # 万元 → 亿
             profile = {
-                "name": name, "market": "A", "industry": industry, "unit": "RMB亿",
-                "price": price, "shares_yi": (mcap_yi / price if price else 0), "mcap_yi": mcap_yi,
-                "revenue_yi": 0, "net_margin": 0, "fcf_yi": None, "ebitda_yi": None,
-                "total_debt_yi": 0, "cash_yi": 0, "equity_yi": 0,
-                "eps": 0, "bvps": 0, "pe": to_float(row["pe"]), "pb": to_float(row["pb"]), "ps": 0,
-                "roe": 0, "rev_growth": 0, "debt_ratio": 0, "moat": 5.0,
-                "momentum": 0.0, "volatility": 0.3, "beta": 1.0,
-                "instr_ratio": 40, "sentiment": 5.0, "lhb_count": 0, "source": "tushare 机构级数据",
+                "name": name,
+                "market": "A",
+                "industry": industry,
+                "unit": "RMB亿",
+                "price": price,
+                "shares_yi": (mcap_yi / price if price else 0),
+                "mcap_yi": mcap_yi,
+                "revenue_yi": 0,
+                "net_margin": 0,
+                "fcf_yi": None,
+                "ebitda_yi": None,
+                "total_debt_yi": 0,
+                "cash_yi": 0,
+                "equity_yi": 0,
+                "eps": 0,
+                "bvps": 0,
+                "pe": to_float(row["pe"]),
+                "pb": to_float(row["pb"]),
+                "ps": 0,
+                "roe": 0,
+                "rev_growth": 0,
+                "debt_ratio": 0,
+                "moat": 5.0,
+                "momentum": 0.0,
+                "volatility": 0.3,
+                "beta": 1.0,
+                "instr_ratio": 40,
+                "sentiment": 5.0,
+                "lhb_count": 0,
+                "source": "tushare 机构级数据",
             }
             cur = DEMO.get(ticker.strip().upper())
             if cur:
-                for k in ("revenue_yi", "net_margin", "fcf_yi", "ebitda_yi", "total_debt_yi", "cash_yi",
-                          "equity_yi", "roe", "rev_growth", "debt_ratio", "moat", "beta",
-                          "instr_ratio", "sentiment", "lhb_count",
-                          "is_financial", "is_tech", "is_ai", "is_liquor", "is_new_energy", "is_cyclical"):
+                for k in (
+                    "revenue_yi",
+                    "net_margin",
+                    "fcf_yi",
+                    "ebitda_yi",
+                    "total_debt_yi",
+                    "cash_yi",
+                    "equity_yi",
+                    "roe",
+                    "rev_growth",
+                    "debt_ratio",
+                    "moat",
+                    "beta",
+                    "instr_ratio",
+                    "sentiment",
+                    "lhb_count",
+                    "is_financial",
+                    "is_tech",
+                    "is_ai",
+                    "is_liquor",
+                    "is_new_energy",
+                    "is_cyclical",
+                ):
                     if k in cur and cur[k] not in (0, None, ""):
                         profile[k] = cur[k]
                 profile["source"] = "tushare 实时 + 内置近似基本面兜底"
@@ -151,6 +241,7 @@ class TushareDataProvider(DataProvider):
 
     def ping(self) -> float:
         import time
+
         t0 = time.time()
         self.get_profile("600519")
         return time.time() - t0
@@ -166,6 +257,7 @@ class BaostockDataProvider(DataProvider):
     def is_available(self) -> bool:
         try:
             import baostock  # noqa: F401
+
             return True
         except Exception:
             return False
@@ -186,16 +278,22 @@ class BaostockDataProvider(DataProvider):
             if rs.error_code == "0" and rs.next():
                 name = rs.get_row_data()[1]
             # 取最近交易日日K
-            rs = bs.query_history_k_data_plus(bs_code, "date,open,high,low,close,volume,amount,tradestatus",
-                                              frequency="d", count=60, adjustflag="2")
+            rs = bs.query_history_k_data_plus(
+                bs_code, "date,open,high,low,close,volume,amount,tradestatus", frequency="d", count=60, adjustflag="2"
+            )
             closes = []
             last = None
             if rs.error_code == "0":
                 while rs.next():
                     row = rs.get_row_data()
-                    last = {"price": to_float(row[4]), "open": to_float(row[1]),
-                            "high": to_float(row[2]), "low": to_float(row[3]),
-                            "volume": to_float(row[5]), "amount_yi": to_float(row[6]) / 1e8}
+                    last = {
+                        "price": to_float(row[4]),
+                        "open": to_float(row[1]),
+                        "high": to_float(row[2]),
+                        "low": to_float(row[3]),
+                        "volume": to_float(row[5]),
+                        "amount_yi": to_float(row[6]) / 1e8,
+                    }
                     closes.append(to_float(row[4]))
             bs.logout()
             if not last or last["price"] <= 0:
@@ -206,20 +304,61 @@ class BaostockDataProvider(DataProvider):
             if cur:
                 mcap_yi = cur.get("mcap_yi", 0)
             profile = {
-                "name": name, "market": "A", "industry": (cur or {}).get("industry", "未知"), "unit": "RMB亿",
-                "price": last["price"], "shares_yi": (mcap_yi / last["price"] if last["price"] else 0),
-                "mcap_yi": mcap_yi, "revenue_yi": 0, "net_margin": 0, "fcf_yi": None, "ebitda_yi": None,
-                "total_debt_yi": 0, "cash_yi": 0, "equity_yi": 0, "eps": 0, "bvps": 0,
-                "pe": (cur or {}).get("pe", 0), "pb": (cur or {}).get("pb", 0), "ps": 0,
-                "roe": 0, "rev_growth": 0, "debt_ratio": 0, "moat": 5.0,
-                "momentum": momentum, "volatility": 0.3, "beta": 1.0,
-                "instr_ratio": 40, "sentiment": 5.0, "lhb_count": 0, "source": "baostock 历史行情",
+                "name": name,
+                "market": "A",
+                "industry": (cur or {}).get("industry", "未知"),
+                "unit": "RMB亿",
+                "price": last["price"],
+                "shares_yi": (mcap_yi / last["price"] if last["price"] else 0),
+                "mcap_yi": mcap_yi,
+                "revenue_yi": 0,
+                "net_margin": 0,
+                "fcf_yi": None,
+                "ebitda_yi": None,
+                "total_debt_yi": 0,
+                "cash_yi": 0,
+                "equity_yi": 0,
+                "eps": 0,
+                "bvps": 0,
+                "pe": (cur or {}).get("pe", 0),
+                "pb": (cur or {}).get("pb", 0),
+                "ps": 0,
+                "roe": 0,
+                "rev_growth": 0,
+                "debt_ratio": 0,
+                "moat": 5.0,
+                "momentum": momentum,
+                "volatility": 0.3,
+                "beta": 1.0,
+                "instr_ratio": 40,
+                "sentiment": 5.0,
+                "lhb_count": 0,
+                "source": "baostock 历史行情",
             }
             if cur:
-                for k in ("revenue_yi", "net_margin", "fcf_yi", "ebitda_yi", "total_debt_yi", "cash_yi",
-                          "equity_yi", "roe", "rev_growth", "debt_ratio", "moat", "beta",
-                          "instr_ratio", "sentiment", "lhb_count",
-                          "is_financial", "is_tech", "is_ai", "is_liquor", "is_new_energy", "is_cyclical"):
+                for k in (
+                    "revenue_yi",
+                    "net_margin",
+                    "fcf_yi",
+                    "ebitda_yi",
+                    "total_debt_yi",
+                    "cash_yi",
+                    "equity_yi",
+                    "roe",
+                    "rev_growth",
+                    "debt_ratio",
+                    "moat",
+                    "beta",
+                    "instr_ratio",
+                    "sentiment",
+                    "lhb_count",
+                    "is_financial",
+                    "is_tech",
+                    "is_ai",
+                    "is_liquor",
+                    "is_new_energy",
+                    "is_cyclical",
+                ):
                     if k in cur and cur[k] not in (0, None, ""):
                         profile[k] = cur[k]
                 profile["source"] = "baostock 实时 + 内置近似基本面兜底"
@@ -234,6 +373,7 @@ class BaostockDataProvider(DataProvider):
 
     def ping(self) -> float:
         import time
+
         t0 = time.time()
         self.get_profile("600519")
         return time.time() - t0

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """HTTP 数据抓取基元 · 零依赖（仅标准库 urllib）。
 
 设计目标：
@@ -6,17 +5,18 @@
   - 支持 timeout / proxy（http/https），统一异常 → ProviderError
   - 兼容 GBK（新浪）与 UTF-8（腾讯/东方财富）文本
 """
+
 from __future__ import annotations
 
-import urllib.request
 import urllib.error
-from typing import Optional
+import urllib.request
 
 from .base import ProviderError
 
 
-def http_get(url: str, timeout: float = 8.0, proxy: str = "", headers: Optional[dict] = None,
-            encoding: str = "utf-8") -> str:
+def http_get(
+    url: str, timeout: float = 8.0, proxy: str = "", headers: dict | None = None, encoding: str = "utf-8"
+) -> str:
     """发起 GET，返回解码后的文本。任何失败抛 ProviderError。"""
     hdrs = {
         "User-Agent": (
@@ -32,6 +32,7 @@ def http_get(url: str, timeout: float = 8.0, proxy: str = "", headers: Optional[
     handlers = []
     if proxy:
         from urllib.request import ProxyHandler
+
         handlers.append(ProxyHandler({"http": proxy, "https": proxy}))
 
     opener = urllib.request.build_opener(*handlers) if handlers else urllib.request.urlopen
@@ -44,7 +45,7 @@ def http_get(url: str, timeout: float = 8.0, proxy: str = "", headers: Optional[
         raw = resp.read()
     except urllib.error.URLError as e:
         raise ProviderError(f"网络请求失败: {e.reason if hasattr(e, 'reason') else e}")
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         raise ProviderError(f"网络请求异常: {e}")
 
     # 尝试按指定编码，失败再回退 gbk / utf-8

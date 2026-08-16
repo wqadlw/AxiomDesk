@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """运行时配置存储 · 持久化到 config.json（配置页的“后端真相来源”）。
 
 约定：
@@ -7,15 +6,15 @@
   - 加载时与默认结构做深度合并，避免旧配置缺字段导致 KeyError
   - token 等敏感字段仅落本地文件，不会回传到任何远端
 """
+
 from __future__ import annotations
 
+import copy
 import json
 import os
-import copy
 from pathlib import Path
-from typing import Any
 
-from .providers.registry import DEFAULT_PROVIDER_ORDER, DEFAULT_PROVIDER_CFG, PROVIDER_META
+from .providers.registry import DEFAULT_PROVIDER_CFG, DEFAULT_PROVIDER_ORDER, PROVIDER_META
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -23,11 +22,9 @@ PROJECT_ROOT = Path(__file__).parent.parent
 def _default_config() -> dict:
     return {
         "version": 1,
-        "data_source": "auto",   # demo | auto | <provider_id>
+        "data_source": "auto",  # demo | auto | <provider_id>
         "cache_ttl": 600,
-        "providers": {
-            pid: copy.deepcopy(DEFAULT_PROVIDER_CFG[pid]) for pid in DEFAULT_PROVIDER_ORDER
-        },
+        "providers": {pid: copy.deepcopy(DEFAULT_PROVIDER_CFG[pid]) for pid in DEFAULT_PROVIDER_ORDER},
         "llm": {
             "provider": "deepseek",
             "api_key": "",
@@ -59,7 +56,7 @@ def load_config() -> dict:
     p = _config_path()
     try:
         if p.exists():
-            with open(p, "r", encoding="utf-8") as f:
+            with open(p, encoding="utf-8") as f:
                 data = json.load(f)
             merged = _deep_merge(_default_config(), data)
             return merged
@@ -97,7 +94,9 @@ def save_config(data: dict) -> dict:
     cfg["llm"] = {
         "provider": str(cfg.get("llm", {}).get("provider", "deepseek") or "deepseek"),
         "api_key": str(cfg.get("llm", {}).get("api_key", "") or ""),
-        "base_url": str(cfg.get("llm", {}).get("base_url", "https://api.deepseek.com/v1") or "https://api.deepseek.com/v1"),
+        "base_url": str(
+            cfg.get("llm", {}).get("base_url", "https://api.deepseek.com/v1") or "https://api.deepseek.com/v1"
+        ),
         "model": str(cfg.get("llm", {}).get("model", "deepseek-chat") or "deepseek-chat"),
     }
     cfg["version"] = 1
@@ -151,22 +150,24 @@ def provider_status() -> list[dict]:
                 available = bool(cls().is_available())
         except Exception:
             available = False
-        out.append({
-            "id": pid,
-            "name": meta["name"],
-            "desc": meta["desc"],
-            "builtin": meta["builtin"],
-            "requires_token": meta["requires_token"],
-            "install": meta.get("install", ""),
-            "home": meta.get("home", ""),
-            "enabled": bool(pc.get("enabled", False)),
-            "priority": int(pc.get("priority", 99)),
-            "timeout": int(pc.get("timeout", 8)),
-            "proxy": str(pc.get("proxy", "")),
-            "has_token": bool(pc.get("token", "")),
-            "installed": available,
-            "mode": "direct-http" if meta["builtin"] else "package",
-        })
+        out.append(
+            {
+                "id": pid,
+                "name": meta["name"],
+                "desc": meta["desc"],
+                "builtin": meta["builtin"],
+                "requires_token": meta["requires_token"],
+                "install": meta.get("install", ""),
+                "home": meta.get("home", ""),
+                "enabled": bool(pc.get("enabled", False)),
+                "priority": int(pc.get("priority", 99)),
+                "timeout": int(pc.get("timeout", 8)),
+                "proxy": str(pc.get("proxy", "")),
+                "has_token": bool(pc.get("token", "")),
+                "installed": available,
+                "mode": "direct-http" if meta["builtin"] else "package",
+            }
+        )
     return out
 
 

@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """HTTP 中间件：请求 ID 透传 + 访问日志 + CORS。"""
+
 from __future__ import annotations
 
 import time
@@ -30,7 +30,11 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = rid
         logger.info(
             "%s %s -> %d (%dms) rid=%s",
-            request.method, request.url.path, response.status_code, duration_ms, rid,
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+            rid,
         )
         request_id_ctx.reset(token)
         return response

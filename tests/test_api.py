@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """API 层测试 · health/meta/analyze/jobs/history/compare（FastAPI TestClient 同步驱动）。"""
+
 from __future__ import annotations
 
 import time
@@ -26,8 +26,7 @@ def test_meta(client):
 
 
 def test_analyze_sync(client):
-    r = client.get("/api/analyze", params={
-        "ticker": "600519", "depth": "lite", "use_ai": "false", "boost": 0})
+    r = client.get("/api/analyze", params={"ticker": "600519", "depth": "lite", "use_ai": "false", "boost": 0})
     assert r.status_code == 200
     d = r.json()
     assert d["overall_score"] > 0
@@ -36,8 +35,7 @@ def test_analyze_sync(client):
 
 
 def test_jobs_flow(client):
-    r = client.post("/api/jobs", json={
-        "ticker": "600519", "depth": "lite", "boost": 0, "use_ai": False})
+    r = client.post("/api/jobs", json={"ticker": "600519", "depth": "lite", "boost": 0, "use_ai": False})
     assert r.status_code == 200
     body = r.json()
     assert "job_id" in body
@@ -60,8 +58,7 @@ def test_jobs_flow(client):
 
 def test_history(client):
     # 先制造一条记录
-    client.post("/api/jobs", json={
-        "ticker": "NVDA", "depth": "lite", "boost": 0, "use_ai": False})
+    client.post("/api/jobs", json={"ticker": "NVDA", "depth": "lite", "boost": 0, "use_ai": False})
     r = client.get("/api/history", params={"limit": 50})
     assert r.status_code == 200
     items = r.json()["items"]
@@ -71,8 +68,7 @@ def test_history(client):
 
 
 def test_history_filter_by_ticker(client):
-    client.post("/api/jobs", json={
-        "ticker": "000001", "depth": "lite", "boost": 0, "use_ai": False})
+    client.post("/api/jobs", json={"ticker": "000001", "depth": "lite", "boost": 0, "use_ai": False})
     r = client.get("/api/history", params={"ticker": "000001", "limit": 50})
     assert r.status_code == 200
     items = r.json()["items"]
@@ -81,8 +77,7 @@ def test_history_filter_by_ticker(client):
 
 
 def test_compare(client):
-    r = client.get("/api/compare", params={
-        "tickers": "600519,000001,NVDA", "depth": "lite"})
+    r = client.get("/api/compare", params={"tickers": "600519,000001,NVDA", "depth": "lite"})
     assert r.status_code == 200
     items = r.json()["items"]
     assert len(items) == 3

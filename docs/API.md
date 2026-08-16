@@ -48,14 +48,33 @@
 ```jsonc
 GET /api/analyze?ticker=600519&depth=deep&boost=0&use_ai=true
 // → {
-//      "ticker": "600519", "meta": { "name": "贵州茅台", "price": 1341.99, ... },
+//      "ticker": "600519", "meta": { "name": "贵州茅台", "price": 1341.99,
+//        "data_quality": { "quote": "live", "fundamentals": "live", "estimated": false }, ... },
 //      "overall_score": 7.0, "verdict": "买入",
+//      "data_note": "行情与基本面均为实时/真实数据。",
+//      "data_disclaimer": "",            // 行情实时且基本面完整时为空
 //      "valuation": { "fair_price": 1345.2, "fair_method": "comps", ... },
 //      "panel_summary": { "panel_consensus": "...", ... },
 //      "trap": { "trap_level": "safe", "signals": [...] },
 //      "ai": { "_source": "template" | "deepseek", "core_thesis": "...", ... }
 //    }
 ```
+
+### 数据溯源字段（诚实化设计）
+
+为避免「假自信」的深度分析，每份报告都携带来源标注：
+
+| 字段 | 位置 | 取值 | 含义 |
+|------|------|------|------|
+| `quote` | `meta.data_quality.quote` | `live` / `demo` | 行情是否实时 |
+| `fundamentals` | `meta.data_quality.fundamentals` | `live` / `estimated` / `demo` | 基本面来源：`live`=实时+财报；`estimated`=行情实时但财报缺失、由 PE/PB 推导 EPS/BVPS/ROE；`demo`=离线合成 |
+| `estimated` | `meta.data_quality.estimated` | bool | `fundamentals == "estimated"` 的快捷判断 |
+| `data_note` | 顶层 | string | 报告头部的数据说明（前端徽标文案来源） |
+| `data_disclaimer` | 顶层 | string | 基本面为估算/演示时的醒目免责声明；完整实时数据时为空白 |
+
+> 推导恒等式：`EPS = 现价/PE`、`BVPS = 现价/PB`、`ROE ≈ PB/PE`（TTM 近似）。
+> 当数据源仅提供实时行情（PE/PB）而未提供完整财报时，系统据此推导基本面锚点，
+> 使 66 维评分与估值有真实依据，而非跑在 0 值上。
 
 ### `POST /api/jobs`
 提交异步分析任务（后台跑引擎，结果落库）。

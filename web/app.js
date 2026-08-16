@@ -213,6 +213,23 @@
     if (source === "deepseek") { badge.textContent = "研判：DeepSeek 在线"; badge.className = "llm-badge online"; }
     else { badge.textContent = "研判：离线模板(含人格声纹)"; badge.className = "llm-badge offline"; }
 
+    // 数据溯源徽标：透明展示行情/基本面来源，避免「假自信」结论
+    const dq = m.data_quality || {};
+    const dqEl = $("#rh-dataq");
+    if (dq.fundamentals) {
+      const map = {
+        live: ["行情·基本面 实时", "live"],
+        estimated: ["行情实时 · 基本面由 PE/PB 估算", "est"],
+        demo: ["离线演示合成数据", "demo"],
+      };
+      const [txt, cls] = map[dq.fundamentals] || ["—", ""];
+      dqEl.textContent = "数据：" + txt;
+      dqEl.className = "rh-dataq " + cls;
+      dqEl.hidden = false;
+    } else {
+      dqEl.hidden = true;
+    }
+
     renderOverview(r);
     renderDims(r);
     renderRisks(r);
@@ -228,6 +245,11 @@
     const m = r.meta || {}, ai = r.ai || {};
     const panel = $("#tab-overview"); panel.innerHTML = "";
     const grpMap = {}; (r.panel_by_group || []).forEach(g => (grpMap[g.id] = g.color));
+
+    // 数据可信度声明（当基本面为估算/演示时高亮提示）
+    if (r.data_disclaimer) {
+      panel.appendChild(el("div", { class: "data-disclaimer", text: r.data_disclaimer }));
+    }
 
     const left = el("div", { class: "gauge-wrap" }, [
       el("div", { class: "card", style: "display:flex;flex-direction:column;align-items:center;gap:6px" }, [

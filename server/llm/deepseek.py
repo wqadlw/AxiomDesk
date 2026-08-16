@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """DeepSeek Provider · OpenAI 兼容 chat/completions，纯 stdlib 实现（零外部依赖）。
 
 官方接入要点（2026）：
@@ -7,6 +6,7 @@
   - 鉴权：Authorization: Bearer <key>
   - 用 response_format={"type":"json_object"} 强制 JSON 输出，便于结构化解析
 """
+
 from __future__ import annotations
 
 import json
@@ -26,20 +26,24 @@ class DeepSeekProvider(LLMProvider):
     name = "deepseek"
     online = True
 
-    def __init__(self, api_key: str | None = None, base_url: str | None = None,
-                 model: str | None = None, timeout: float | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        timeout: float | None = None,
+    ):
         self.api_key = (api_key or os.environ.get("UZI_DEEPSEEK_API_KEY") or "").strip()
-        self.base_url = (base_url or os.environ.get("UZI_DEEPSEEK_BASE_URL")
-                         or "https://api.deepseek.com").rstrip("/")
+        self.base_url = (base_url or os.environ.get("UZI_DEEPSEEK_BASE_URL") or "https://api.deepseek.com").rstrip("/")
         self.model = (model or os.environ.get("UZI_DEEPSEEK_MODEL") or "deepseek-chat").strip()
-        self.timeout = float(timeout if timeout is not None
-                            else os.environ.get("UZI_DEEPSEEK_TIMEOUT", "60"))
+        self.timeout = float(timeout if timeout is not None else os.environ.get("UZI_DEEPSEEK_TIMEOUT", "60"))
 
     def is_available(self) -> bool:
         return bool(self.api_key)
 
-    def complete(self, system: str, user: str, *, max_tokens: int = 2000,
-                 temperature: float = 0.3, timeout: float | None = None) -> str:
+    def complete(
+        self, system: str, user: str, *, max_tokens: int = 2000, temperature: float = 0.3, timeout: float | None = None
+    ) -> str:
         if not self.api_key:
             raise DeepSeekError("未配置 UZI_DEEPSEEK_API_KEY，无法调用 DeepSeek")
 
@@ -57,7 +61,9 @@ class DeepSeekProvider(LLMProvider):
         }
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(
-            url, data=data, method="POST",
+            url,
+            data=data,
+            method="POST",
             headers={
                 "Content-Type": "application/json; charset=utf-8",
                 "Authorization": f"Bearer {self.api_key}",
@@ -84,5 +90,4 @@ class DeepSeekProvider(LLMProvider):
             raise DeepSeekError(f"DeepSeek 响应解析失败: {raw[:300]}") from e
 
     def meta(self) -> dict[str, Any]:
-        return {"name": self.name, "online": True, "model": self.model,
-                "base_url": self.base_url}
+        return {"name": self.name, "online": True, "model": self.model, "base_url": self.base_url}

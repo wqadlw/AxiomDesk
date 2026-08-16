@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """LLM 工厂 · 单例 + 自动降级。
 
 优先级：配置了 UZI_DEEPSEEK_API_KEY → DeepSeekProvider（真实大模型推理）；
 否则 → TemplateProvider（离线确定性回退）。
 两个 Provider 产出同一份 schema，调用方无需关心底层是谁。
 """
+
 from __future__ import annotations
 
 import os
@@ -24,6 +24,7 @@ def get_llm(force_reload: bool = False) -> LLMProvider:
     llm_cfg = {}
     try:
         from ..config_store import get_config
+
         llm_cfg = get_config().get("llm", {})
     except Exception:
         llm_cfg = {}

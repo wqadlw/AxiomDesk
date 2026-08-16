@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """腾讯财经实时数据源（零依赖 · 本项目主推的「真实多源」接口）。
 
 接口：
@@ -14,14 +13,14 @@
 设计：实时字段优先；基本面（营收/净利/ROE/负债等）用内置 DEMO 近似兜底，
 缺失则给中性估值，绝不返回半截数据。任何失败抛 ProviderError → 链路降级。
 """
+
 from __future__ import annotations
 
 import math
-import re
 
 from .base import DataProvider, ProviderError
-from .http_base import http_get, to_float, secid_for
 from .demo import DEMO
+from .http_base import http_get, secid_for, to_float
 
 
 class TencentDataProvider(DataProvider):
@@ -56,7 +55,7 @@ class TencentDataProvider(DataProvider):
             "high": to_float(f[33]),
             "low": to_float(f[34]),
             "change_pct": to_float(f[32]) / 100.0,
-            "volume": to_float(f[36]),          # 手
+            "volume": to_float(f[36]),  # 手
             "amount_yi": to_float(f[37]) / 10000.0,  # 万元 → 亿
             "turnover": to_float(f[38]) / 100.0,
             "pe": to_float(f[39]),
@@ -70,6 +69,7 @@ class TencentDataProvider(DataProvider):
         url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={prefix}{code},day,,,60,qfq"
         try:
             import json
+
             txt = http_get(url, timeout=self.timeout, proxy=self.proxy, encoding="utf-8")
             d = json.loads(txt)
             node = d.get("data", {}).get(f"{prefix}{code}", {})
@@ -120,17 +120,35 @@ class TencentDataProvider(DataProvider):
         momentum, volatility = self._kline(prefix, ticker[-6:] if len(ticker) >= 6 else ticker)
 
         profile = {
-            "name": q["name"], "market": "A" if prefix in ("sh", "sz") else "HK",
-            "industry": "未知", "unit": "RMB亿",
-            "price": price, "shares_yi": shares_yi, "mcap_yi": mcap_yi,
-            "revenue_yi": 0, "net_margin": 0, "fcf_yi": None, "ebitda_yi": None,
-            "total_debt_yi": 0, "cash_yi": 0, "equity_yi": 0,
-            "eps": 0, "bvps": (price / q["pb"]) if q["pb"] else 0,
-            "pe": q["pe"], "pb": q["pb"], "ps": 0,
-            "roe": 0, "rev_growth": 0,
-            "debt_ratio": 0, "moat": 5.0,
-            "momentum": momentum or q["change_pct"], "volatility": volatility, "beta": 1.0,
-            "instr_ratio": 40, "sentiment": 5.0, "lhb_count": 0,
+            "name": q["name"],
+            "market": "A" if prefix in ("sh", "sz") else "HK",
+            "industry": "未知",
+            "unit": "RMB亿",
+            "price": price,
+            "shares_yi": shares_yi,
+            "mcap_yi": mcap_yi,
+            "revenue_yi": 0,
+            "net_margin": 0,
+            "fcf_yi": None,
+            "ebitda_yi": None,
+            "total_debt_yi": 0,
+            "cash_yi": 0,
+            "equity_yi": 0,
+            "eps": 0,
+            "bvps": (price / q["pb"]) if q["pb"] else 0,
+            "pe": q["pe"],
+            "pb": q["pb"],
+            "ps": 0,
+            "roe": 0,
+            "rev_growth": 0,
+            "debt_ratio": 0,
+            "moat": 5.0,
+            "momentum": momentum or q["change_pct"],
+            "volatility": volatility,
+            "beta": 1.0,
+            "instr_ratio": 40,
+            "sentiment": 5.0,
+            "lhb_count": 0,
             "source": "腾讯财经实时行情",
         }
         self._merge_demo(profile, ticker, q)
@@ -141,10 +159,30 @@ class TencentDataProvider(DataProvider):
         code = ticker.strip().upper()
         cur = DEMO.get(code) or DEMO.get(code[-6:]) or DEMO.get(code[-5:].zfill(5) if len(code) >= 5 else code)
         if cur:
-            for k in ("revenue_yi", "net_margin", "fcf_yi", "ebitda_yi", "total_debt_yi",
-                      "cash_yi", "equity_yi", "roe", "rev_growth", "debt_ratio", "moat",
-                      "industry", "beta", "instr_ratio", "sentiment", "lhb_count",
-                      "is_financial", "is_tech", "is_ai", "is_liquor", "is_new_energy", "is_cyclical"):
+            for k in (
+                "revenue_yi",
+                "net_margin",
+                "fcf_yi",
+                "ebitda_yi",
+                "total_debt_yi",
+                "cash_yi",
+                "equity_yi",
+                "roe",
+                "rev_growth",
+                "debt_ratio",
+                "moat",
+                "industry",
+                "beta",
+                "instr_ratio",
+                "sentiment",
+                "lhb_count",
+                "is_financial",
+                "is_tech",
+                "is_ai",
+                "is_liquor",
+                "is_new_energy",
+                "is_cyclical",
+            ):
                 if k in cur and cur[k] not in (0, None, ""):
                     profile[k] = cur[k]
             if profile.get("pe") in (0, None):
@@ -158,6 +196,7 @@ class TencentDataProvider(DataProvider):
 
     def ping(self) -> float:
         import time
+
         t0 = time.time()
         self._quote("sh", "600519")
         return time.time() - t0

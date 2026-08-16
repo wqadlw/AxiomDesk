@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """API 路由。
 
 同时挂在 /api 与 /api/v1 两个前缀下，便于平滑演进版本。
@@ -11,6 +10,7 @@
   - GET  /api/compare     多标的横向对比（同步，限 5 只）
   - GET  /api/analyze     同步分析（原接口，结果同步落库以便回看）
 """
+
 from __future__ import annotations
 
 import time
@@ -18,15 +18,20 @@ import time
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pydantic import BaseModel, Field
 
-from ..engine import engine, investors as INV
-from ..jobs import get_store
 from ..config_store import (
-    get_config, set_config, reset_config, provider_status, effective_data_source,
+    effective_data_source,
+    get_config,
+    provider_status,
+    reset_config,
+    set_config,
 )
-from ..providers.registry import class_for, PROVIDER_META
+from ..engine import engine
+from ..engine import investors as INV
+from ..jobs import get_store
+from ..llm.factory import reload_llm
 from ..providers.base import ProviderError
 from ..providers.factory import reload_provider
-from ..llm.factory import reload_llm
+from ..providers.registry import PROVIDER_META, class_for
 from .errors import BadRequestError
 from .schemas import AnalyzeParams
 
@@ -81,8 +86,7 @@ def _analyze(params: AnalyzeParams = Depends()):
     if not params.ticker or not params.ticker.strip():
         raise BadRequestError("ticker 不能为空")
     try:
-        report = engine.analyze(params.ticker, keyword_boost=params.boost,
-                                depth=params.depth, use_ai=params.use_ai)
+        report = engine.analyze(params.ticker, keyword_boost=params.boost, depth=params.depth, use_ai=params.use_ai)
     except ValueError as e:
         raise BadRequestError(str(e))
     except Exception as e:
@@ -104,8 +108,13 @@ def _create_job(req: JobRequest, bg: BackgroundTasks):
     store = get_store()
     jid = store.create(req.ticker, req.depth, req.boost)
     bg.add_task(store.run, jid)
-    return {"job_id": jid, "status": "pending", "ticker": req.ticker.strip().upper(),
-            "depth": req.depth, "version": API_VERSION}
+    return {
+        "job_id": jid,
+        "status": "pending",
+        "ticker": req.ticker.strip().upper(),
+        "depth": req.depth,
+        "version": API_VERSION,
+    }
 
 
 def _get_job(job_id: str):
@@ -114,10 +123,16 @@ def _get_job(job_id: str):
     if not row:
         raise BadRequestError(f"任务不存在：{job_id}")
     out = {
-        "job_id": row["id"], "ticker": row["ticker"], "depth": row["depth"],
-        "boost": row["boost"], "status": row["status"],
-        "created_at": row["created_at"], "finished_at": row["finished_at"],
-        "source": row.get("source"), "overall": row.get("overall"), "verdict": row.get("verdict"),
+        "job_id": row["id"],
+        "ticker": row["ticker"],
+        "depth": row["depth"],
+        "boost": row["boost"],
+        "status": row["status"],
+        "created_at": row["created_at"],
+        "finished_at": row["finished_at"],
+        "source": row.get("source"),
+        "overall": row.get("overall"),
+        "verdict": row.get("verdict"),
     }
     if row["status"] == "done":
         out["result"] = store.get_result(job_id)
@@ -130,9 +145,11 @@ def _history(limit: int = Query(50, ge=1, le=500), ticker: str | None = Query(No
     return {"version": API_VERSION, "items": get_store().summary_rows(limit=limit, ticker=ticker)}
 
 
-def _compare(tickers: str = Query(..., description="逗号分隔，最多 5 只，如 600519,300750,000001"),
-             depth: str = Query("medium", pattern="^(lite|medium|deep)$"),
-             boost: int = Query(0, ge=0, le=4)):
+def _compare(
+    tickers: str = Query(..., description="逗号分隔，最多 5 只，如 600519,300750,000001"),
+    depth: str = Query("medium", pattern="^(lite|medium|deep)$"),
+    boost: int = Query(0, ge=0, le=4),
+):
     raw = [t.strip() for t in (tickers or "").split(",") if t.strip()]
     if not raw:
         raise BadRequestError("tickers 不能为空")
@@ -146,18 +163,29 @@ def _compare(tickers: str = Query(..., description="逗号分隔，最多 5 只�
             out.append({"ticker": t, "error": str(e)})
             continue
         m = r["meta"]
-        out.append({
-            "ticker": t, "name": m.get("name"), "market": m.get("market"), "industry": m.get("industry"),
-            "price": m.get("price"), "mcap": m.get("mcap"), "mcap_unit": m.get("mcap_unit"),
-            "pe": m.get("pe"), "pb": m.get("pb"), "roe": m.get("roe"), "rev_growth": m.get("revenue_growth"),
-            "overall_score": r.get("overall_score"), "verdict": r.get("verdict"),
-            "fair_price": r.get("valuation", {}).get("fair_price"),
-            "consensus": r.get("panel_summary", {}).get("panel_consensus"),
-            "bullish": r.get("panel_summary", {}).get("bullish"),
-            "bearish": r.get("panel_summary", {}).get("bearish"),
-            "trap_level": r.get("trap", {}).get("trap_level"),
-            "source": r.get("ai", {}).get("_source"),
-        })
+        out.append(
+            {
+                "ticker": t,
+                "name": m.get("name"),
+                "market": m.get("market"),
+                "industry": m.get("industry"),
+                "price": m.get("price"),
+                "mcap": m.get("mcap"),
+                "mcap_unit": m.get("mcap_unit"),
+                "pe": m.get("pe"),
+                "pb": m.get("pb"),
+                "roe": m.get("roe"),
+                "rev_growth": m.get("revenue_growth"),
+                "overall_score": r.get("overall_score"),
+                "verdict": r.get("verdict"),
+                "fair_price": r.get("valuation", {}).get("fair_price"),
+                "consensus": r.get("panel_summary", {}).get("panel_consensus"),
+                "bullish": r.get("panel_summary", {}).get("bullish"),
+                "bearish": r.get("panel_summary", {}).get("bearish"),
+                "trap_level": r.get("trap", {}).get("trap_level"),
+                "source": r.get("ai", {}).get("_source"),
+            }
+        )
     return {"version": API_VERSION, "count": len(out), "items": out}
 
 
@@ -226,8 +254,14 @@ def _config_test(body: ConfigTestRequest):
     except Exception as e:
         raise BadRequestError(f"实例化失败: {e}")
 
-    result = {"provider": pid, "name": PROVIDER_META[pid]["name"], "status": "fail",
-              "latency_ms": None, "error": None, "sample": None}
+    result = {
+        "provider": pid,
+        "name": PROVIDER_META[pid]["name"],
+        "status": "fail",
+        "latency_ms": None,
+        "error": None,
+        "sample": None,
+    }
     t0 = time.time()
     try:
         if not inst.is_available():
@@ -244,13 +278,16 @@ def _config_test(body: ConfigTestRequest):
             result["latency_ms"] = round((time.time() - t0) * 1000, 1)
         result["status"] = "ok"
         result["sample"] = {
-            "name": prof.get("name"), "price": prof.get("price"),
-            "mcap_yi": prof.get("mcap_yi"), "pe": prof.get("pe"), "pb": prof.get("pb"),
+            "name": prof.get("name"),
+            "price": prof.get("price"),
+            "mcap_yi": prof.get("mcap_yi"),
+            "pe": prof.get("pe"),
+            "pb": prof.get("pb"),
             "source": prof.get("source"),
         }
     except ProviderError as e:
         result["error"] = f"数据获取失败: {e}"
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         result["error"] = f"异常: {e}"
     return result
 

@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
 """TemplateProvider · 离线确定性回退。
 
 当没有配置 DeepSeek API key（或联网失败）时使用。它吃同样的引擎结果，用规则模板
 生成一份"虽不惊艳但结构完整、引用数字"的中文研判，保证前端永远有内容可渲染、
 应用永不因缺 key 崩溃。schema 与 DeepSeekProvider 完全一致。
 """
-from __future__ import annotations
 
-from typing import Any
+from __future__ import annotations
 
 from .base import LLMProvider
 
@@ -28,8 +26,9 @@ class TemplateProvider(LLMProvider):
     def is_available(self) -> bool:
         return True
 
-    def complete(self, system: str, user: str, *, max_tokens: int = 2000,
-                 temperature: float = 0.3, timeout: float = 60) -> str:
+    def complete(
+        self, system: str, user: str, *, max_tokens: int = 2000, temperature: float = 0.3, timeout: float = 60
+    ) -> str:
         # 模板模式下 complete() 不被直接调用；narrative 层改调 build_template()。
         # 这里保留接口以兼容 LLMProvider 契约。
         return "{}"
@@ -81,19 +80,21 @@ class TemplateProvider(LLMProvider):
         bear_name = gd.get("bear") or "空方代表"
         punchline = gd.get("punchline") or (
             f"多方代表 {bull_name} 与空方代表 {bear_name} 在估值与成长确定性上分歧最大；"
-            f"综合公允价相对现价 {_fmt_pct(upside)}，杀猪盘评级 {trap.get('trap_level','—')}。"
+            f"综合公允价相对现价 {_fmt_pct(upside)}，杀猪盘评级 {trap.get('trap_level', '—')}。"
         )
         rounds = gd.get("rounds", []) or []
-        bull_say_rounds = [f"{bull_name}：{r.get('bull','')}" for r in rounds[:3]] or [
-            f"{bull_name}：估值与护城河支撑长期持有逻辑。"]
-        bear_say_rounds = [f"{bear_name}：{r.get('bear','')}" for r in rounds[:3]] or [
-            f"{bear_name}：成长确定性与估值安全边际仍是最大未知数。"]
+        bull_say_rounds = [f"{bull_name}：{r.get('bull', '')}" for r in rounds[:3]] or [
+            f"{bull_name}：估值与护城河支撑长期持有逻辑。"
+        ]
+        bear_say_rounds = [f"{bear_name}：{r.get('bear', '')}" for r in rounds[:3]] or [
+            f"{bear_name}：成长确定性与估值安全边际仍是最大未知数。"
+        ]
 
         core_conclusion = (
-            f"{meta.get('name','标的')}（{meta.get('ticker','')}）综合评分 {overall}/10，结论「{verdict}」；"
-            f"机构建模显示公允价约 ¥{fair:.2f}（{val.get('fair_method','—')} 锚），相对现价 {_fmt_pct(upside)}，"
-            f"但是杀猪盘评级为 {trap.get('trap_level','—')}，"
-            f"{'需先排除欺诈风险再谈收益' if trap.get('trap_score',9)<=3 else '基本面暂未见系统性风险'}。"
+            f"{meta.get('name', '标的')}（{meta.get('ticker', '')}）综合评分 {overall}/10，结论「{verdict}」；"
+            f"机构建模显示公允价约 ¥{fair:.2f}（{val.get('fair_method', '—')} 锚），相对现价 {_fmt_pct(upside)}，"
+            f"但是杀猪盘评级为 {trap.get('trap_level', '—')}，"
+            f"{'需先排除欺诈风险再谈收益' if trap.get('trap_score', 9) <= 3 else '基本面暂未见系统性风险'}。"
         )
 
         dcf = val.get("dcf", {}) or {}
@@ -104,7 +105,7 @@ class TemplateProvider(LLMProvider):
         lbo_v = lbo.get("verdict", "—")
         valuation_interpretation = (
             f"估值三角：DCF 称「{dcf_v}」（每股内在价 ¥{dcf.get('intrinsic_per_share') or '—'}）；"
-            f"Comps 称「{comps_v}」（隐含价 ¥{comps.get('implied_price',{}).get('via_median_pe') or '—'}）；"
+            f"Comps 称「{comps_v}」（隐含价 ¥{comps.get('implied_price', {}).get('via_median_pe') or '—'}）；"
             f"LBO 称「{lbo_v}」（IRR {lbo.get('irr_pct') or '—'}%）。"
             f"三者以 Comps 为锚，"
             f"{'结论相互印证' if ('低估' in f'{dcf_v}{comps_v}' or '便宜' in comps_v) else '存在分歧，需结合行业增速判断'}。"
@@ -112,8 +113,8 @@ class TemplateProvider(LLMProvider):
 
         def _zone(mult: float, label: str) -> dict:
             price = round(px * mult, 2) if px else 0.0
-            return {"price": price,
-                    "rationale": f"{label}（现价 ¥{px} 的 {mult:.2f}x 参考位）{_DIM_NOTE}"}
+            return {"price": price, "rationale": f"{label}（现价 ¥{px} 的 {mult:.2f}x 参考位）{_DIM_NOTE}"}
+
         buy_zones = {
             "value": _zone(0.85, "价值派：公允价×0.85 要 15% 安全边际"),
             "growth": _zone(1.00, "成长派：现价附近，等 3 年业绩兑现阶段"),
@@ -123,8 +124,8 @@ class TemplateProvider(LLMProvider):
 
         risks = [
             f"估值风险：公允价相对现价 {_fmt_pct(upside)}，{'已透支乐观预期' if upside < 0 else '上行空间有限'}。",
-            f"质量风险：ROE {meta.get('roe','—')}%，净利率 {meta.get('net_margin','—')}%，负债率 {_fmt_pct(meta.get('debt_ratio',0)*100)}。",
-            f"欺诈风险：杀猪盘评级 {trap.get('trap_level','—')} —— {trap.get('recommendation','')}",
+            f"质量风险：ROE {meta.get('roe', '—')}%，净利率 {meta.get('net_margin', '—')}%，负债率 {_fmt_pct(meta.get('debt_ratio', 0) * 100)}。",
+            f"欺诈风险：杀猪盘评级 {trap.get('trap_level', '—')} —— {trap.get('recommendation', '')}",
         ]
 
         return {

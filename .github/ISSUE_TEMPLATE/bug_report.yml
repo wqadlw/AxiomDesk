@@ -1,0 +1,47 @@
+name: 🐛 Bug 报告 / Bug Report
+description: 报告一个可复现的问题 / Report a reproducible problem
+title: "[Bug] <一句话描述>"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 问题描述 / What happened
+      description: 简明描述出现了什么异常。
+      placeholder: 例如：分析某只股票时返回 500 错误……
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      description: 如何稳定复现（代码 / 标的 / 配置）。
+      placeholder: |
+        1. 启动服务：python -m uvicorn server.app:app
+        2. 请求：curl 'http://127.0.0.1:8137/api/analyze?ticker=xxxx'
+        3. 观察到……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为 / Expected behavior
+      description: 你期望发生什么。
+    validations:
+      required: false
+  - type: input
+    id: env
+    attributes:
+      label: 环境 / Environment
+      description: 操作系统、Python 版本、数据源模式（demo/auto/具体源）。
+      placeholder: Windows 11 / Python 3.11 / data_source=auto
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / Logs
+      description: 相关错误日志（请脱敏，勿包含 token / 密钥）。
+      render: shell
+    validations:
+      required: false

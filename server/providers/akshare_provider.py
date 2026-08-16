@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """AkShareProvider · 实时行情数据源（可选，需安装 akshare 且网络可达）。
 
 设计原则：
@@ -8,6 +7,7 @@
     缺失字段用内置「近似基本面」(DEMO) 兜底，绝不在失败时返回半截数据
   - 单位统一为「亿元人民币」
 """
+
 from __future__ import annotations
 
 from .base import DataProvider, ProviderError
@@ -27,6 +27,7 @@ class AkShareDataProvider(DataProvider):
     def is_available(self) -> bool:
         try:
             import akshare  # noqa: F401
+
             return True
         except Exception:
             return False
@@ -57,21 +58,41 @@ class AkShareDataProvider(DataProvider):
             industry = "未知"
             try:
                 ind = ak.stock_individual_info_em(symbol=code)
-                info = dict(zip(ind["item"], ind["value"]))
+                info = dict(zip(ind["item"], ind["value"], strict=False))
                 industry = str(info.get("行业", "未知"))
             except Exception:
                 pass
 
             profile = {
-                "name": name, "market": "A", "industry": industry, "unit": "RMB亿",
-                "price": price, "shares_yi": (mcap_yi / price if price else 0),
-                "mcap_yi": mcap_yi, "revenue_yi": 0, "net_margin": 0,
-                "fcf_yi": None, "ebitda_yi": None, "total_debt_yi": 0,
-                "cash_yi": 0, "equity_yi": 0, "eps": _to_float(r.get("每股收益")),
-                "bvps": _to_float(r.get("每股净资产")), "pe": pe, "pb": pb, "ps": 0,
-                "roe": 0, "rev_growth": 0, "debt_ratio": 0, "moat": 5.0,
-                "momentum": 0.0, "volatility": 0.3, "beta": 1.0,
-                "instr_ratio": 40, "sentiment": 5.0, "lhb_count": 0,
+                "name": name,
+                "market": "A",
+                "industry": industry,
+                "unit": "RMB亿",
+                "price": price,
+                "shares_yi": (mcap_yi / price if price else 0),
+                "mcap_yi": mcap_yi,
+                "revenue_yi": 0,
+                "net_margin": 0,
+                "fcf_yi": None,
+                "ebitda_yi": None,
+                "total_debt_yi": 0,
+                "cash_yi": 0,
+                "equity_yi": 0,
+                "eps": _to_float(r.get("每股收益")),
+                "bvps": _to_float(r.get("每股净资产")),
+                "pe": pe,
+                "pb": pb,
+                "ps": 0,
+                "roe": 0,
+                "rev_growth": 0,
+                "debt_ratio": 0,
+                "moat": 5.0,
+                "momentum": 0.0,
+                "volatility": 0.3,
+                "beta": 1.0,
+                "instr_ratio": 40,
+                "sentiment": 5.0,
+                "lhb_count": 0,
                 "source": "akshare 实时行情",
             }
 
@@ -94,10 +115,31 @@ class AkShareDataProvider(DataProvider):
             # ── 用内置近似基本面兜底缺失的关键字段 ──
             cur = DEMO.get(code)
             if cur:
-                for k in ("revenue_yi", "net_margin", "fcf_yi", "ebitda_yi", "total_debt_yi",
-                          "cash_yi", "equity_yi", "roe", "rev_growth", "debt_ratio", "moat",
-                          "momentum", "volatility", "beta", "instr_ratio", "sentiment", "lhb_count",
-                          "is_financial", "is_tech", "is_ai", "is_liquor", "is_new_energy", "is_cyclical"):
+                for k in (
+                    "revenue_yi",
+                    "net_margin",
+                    "fcf_yi",
+                    "ebitda_yi",
+                    "total_debt_yi",
+                    "cash_yi",
+                    "equity_yi",
+                    "roe",
+                    "rev_growth",
+                    "debt_ratio",
+                    "moat",
+                    "momentum",
+                    "volatility",
+                    "beta",
+                    "instr_ratio",
+                    "sentiment",
+                    "lhb_count",
+                    "is_financial",
+                    "is_tech",
+                    "is_ai",
+                    "is_liquor",
+                    "is_new_energy",
+                    "is_cyclical",
+                ):
                     if k not in profile or profile.get(k) in (0, None, ""):
                         if k in cur:
                             profile[k] = cur[k]

@@ -1,0 +1,127 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uzi-terminal"
+version = "2.0.0"
+description = "UZI 投研终端 · 个股深度分析 Web 终端（66 评委 × 20 维框架 × DCF/Comps/LBO 估值 × 8 信号杀猪盘检测）"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "UZI Terminal Contributors" }]
+keywords = ["a-share", "stock", "analysis", "quant", "valuation", "fastapi"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "pydantic-settings>=2.0",
+]
+
+[project.optional-dependencies]
+# 实时行情（可选；不安装则自动回退到内置确定性 demo 数据源）
+akshare = ["akshare>=1.12"]
+# 开发 / 质量门禁
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "black>=24.0",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/uzi-terminal"
+Repository = "https://github.com/your-org/uzi-terminal"
+Documentation = "https://github.com/your-org/uzi-terminal/blob/main/README.md"
+"Methodology (UZI-Skill)" = "https://github.com/FloatFu-true/UZI-Skill"
+
+[project.scripts]
+uzi-terminal = "server.app:run"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["server*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+src = ["server", "tests"]
+exclude = [".git", ".venv", ".data", ".cache", "node_modules", "__pycache__"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+    "TCH",  # flake8-type-checking
+]
+ignore = [
+    "E402",   # 模块级 try/except 双导入（兼容 `python server/app.py` 直接运行）
+    "B008",   # FastAPI Depends() 在默认值中使用
+    "SIM105", # 容错的 `if x: x.close()` 写法
+    "C401",   # 集合推导（可读性取舍）
+    "RUF012", # 可变类属性类型注解（配置类可接受）
+    "RUF001", # 中文注释中的全角字符（本项目为中文，属正常书写）
+    "RUF002", # 中文注释中的全角字符（本项目为中文，属正常书写）
+    "RUF003", # 中文注释中的全角标点（本项目为中文，属正常书写）
+    "B904",   # fallback 链中 `raise X` 不带 `from`（在此场景属合理写法）
+    "C408",   # 显式 dict()/list() 调用（可读性取舍，CJK 场景下常见）
+    "UP031",  # 旧式 % 格式化（与现有中文日志风格一致，保留）
+    "SIM108", # if-else 改三元（可读性取舍）
+    "SIM102", # 嵌套 if 合并（可读性取舍）
+    "E501",   # 行过长（中文注释/长字符串/URL 不可避免，已用 ruff format 统一换行）
+    "E701",   # `if x: y` 单行写法（与 Black 默认一致，属合理紧凑风格）
+    "E702",   # 行尾分号（历史遗留，低风险，统一风格取舍）
+    "TC001",  # 类型导入移入 TYPE_CHECKING（本项目 pydantic 模型需运行时解析，禁用避免 ForwardRef 问题）
+    "TC002",  # 同上
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B", "F401", "F811", "S101"]
+"server/providers/demo.py" = ["RUF012"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["server"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+known-first-party = ["server"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_unused_ignores = false
+ignore_missing_imports = true
+disallow_untyped_defs = false
+follow_imports = "silent"
+exclude = ["tests/", ".venv/", ".data/"]
+
+[[tool.mypy.overrides]]
+module = ["akshare.*", "efinance.*", "tushare.*", "baostock.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]

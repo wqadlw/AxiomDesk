@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """估值模型 · 忠实移植自 UZI-Skill `scripts/lib/fin_models.py` (v3.9.4)。
 
 三种机构级模型，全部纯 Python、可离线、可溯源：
@@ -9,17 +8,17 @@
 所有函数接收一个 `features` dict（来自 data_provider），输出结构化 dict，
 每个关键步骤都写入 `methodology_log`，便于前端引用“为什么是这个价”。
 """
+
 from __future__ import annotations
 
 import statistics
-from typing import Any
 
 # ── A 股默认假设 ──
-DEFAULT_RF = 0.025            # 10Y 国债收益率
-DEFAULT_ERP = 0.06           # A 股历史股权风险溢价
+DEFAULT_RF = 0.025  # 10Y 国债收益率
+DEFAULT_ERP = 0.06  # A 股历史股权风险溢价
 DEFAULT_BETA = 1.00
 DEFAULT_TAX = 0.25
-DEFAULT_TERMINAL_G = 0.025   # 长期名义 GDP
+DEFAULT_TERMINAL_G = 0.025  # 长期名义 GDP
 DEFAULT_STAGE1_YEARS = 5
 DEFAULT_STAGE2_YEARS = 5
 DEFAULT_STAGE1_GROWTH = 0.10
@@ -37,8 +36,15 @@ def _num(v, default=0.0) -> float:
 # 1. DCF
 # ═══════════════════════════════════════════════════════════════
 
-def compute_wacc(rf=DEFAULT_RF, erp=DEFAULT_ERP, beta=DEFAULT_BETA,
-                 cost_of_debt_pretax=0.045, target_debt_ratio=0.30, tax=DEFAULT_TAX) -> dict:
+
+def compute_wacc(
+    rf=DEFAULT_RF,
+    erp=DEFAULT_ERP,
+    beta=DEFAULT_BETA,
+    cost_of_debt_pretax=0.045,
+    target_debt_ratio=0.30,
+    tax=DEFAULT_TAX,
+) -> dict:
     cost_of_equity = rf + beta * erp
     after_tax_kd = cost_of_debt_pretax * (1 - tax)
     equity_weight = 1 - target_debt_ratio
@@ -91,11 +97,13 @@ def compute_dcf(features: dict, assumptions: dict | None = None) -> dict:
 
     projected_fcf, year_labels, cur = [], [], fcf0
     for i in range(1, a["stage1_years"] + 1):
-        cur *= (1 + a["stage1_growth"])
-        projected_fcf.append(round(cur, 3)); year_labels.append(f"Y{i}")
+        cur *= 1 + a["stage1_growth"]
+        projected_fcf.append(round(cur, 3))
+        year_labels.append(f"Y{i}")
     for i in range(1, a["stage2_years"] + 1):
-        cur *= (1 + a["stage2_growth"])
-        projected_fcf.append(round(cur, 3)); year_labels.append(f"Y{a['stage1_years'] + i}")
+        cur *= 1 + a["stage2_growth"]
+        projected_fcf.append(round(cur, 3))
+        year_labels.append(f"Y{a['stage1_years'] + i}")
 
     pv_fcf = []
     for idx, fcf in enumerate(projected_fcf, start=1):
@@ -117,7 +125,8 @@ def compute_dcf(features: dict, assumptions: dict | None = None) -> dict:
 
     shares_yi = _num(features.get("shares_outstanding_yi"))
     if shares_yi <= 0:
-        mc = _num(features.get("market_cap_yi")); px = _num(features.get("price"))
+        mc = _num(features.get("market_cap_yi"))
+        px = _num(features.get("price"))
         shares_yi = mc / px if px > 0 else 1.0
     per_share = round(equity_value / shares_yi, 2) if shares_yi > 0 else 0
 
@@ -150,10 +159,10 @@ def compute_dcf(features: dict, assumptions: dict | None = None) -> dict:
         "sensitivity_table": sensitivity,
         "assumptions": a,
         "methodology_log": [
-            f"WACC = CAPM: k_e={(wacc_info['cost_of_equity']*100):.2f}%, 税后 k_d={(wacc_info['after_tax_kd']*100):.2f}%, 加权 WACC={(wacc*100):.2f}%",
+            f"WACC = CAPM: k_e={(wacc_info['cost_of_equity'] * 100):.2f}%, 税后 k_d={(wacc_info['after_tax_kd'] * 100):.2f}%, 加权 WACC={(wacc * 100):.2f}%",
             f"基期 FCF = {fcf0:.2f} 亿{'(营收×净利率×0.8 代理)' if _fcf_proxy else ''}",
-            f"两段增长 {(a['stage1_growth']*100):.0f}%({a['stage1_years']}年) → {(a['stage2_growth']*100):.0f}%({a['stage2_years']}年)",
-            f"显式期 PV = {pv_explicit:.1f} 亿; 终值 PV = {tv_pv:.1f} 亿 (占 EV {round(tv_pv/enterprise_value*100,0) if enterprise_value>0 else 0:.0f}%)",
+            f"两段增长 {(a['stage1_growth'] * 100):.0f}%({a['stage1_years']}年) → {(a['stage2_growth'] * 100):.0f}%({a['stage2_years']}年)",
+            f"显式期 PV = {pv_explicit:.1f} 亿; 终值 PV = {tv_pv:.1f} 亿 (占 EV {round(tv_pv / enterprise_value * 100, 0) if enterprise_value > 0 else 0:.0f}%)",
             f"EV {enterprise_value:.1f} − 净债 {net_debt:.1f} = 股权价值 {equity_value:.1f} 亿{_net_debt_note}",
             f"每股内在价值 ¥{per_share:.2f} (现价 ¥{cur_price:.2f}, 安全边际 {safety_margin:+.1f}%)",
         ],
@@ -170,9 +179,11 @@ def _sensitivity_table(fcf0, a, net_debt, shares_yi, wacc_center, g_center) -> d
             cur = fcf0
             proj = []
             for _ in range(a["stage1_years"]):
-                cur *= (1 + a["stage1_growth"]); proj.append(cur)
+                cur *= 1 + a["stage1_growth"]
+                proj.append(cur)
             for _ in range(a["stage2_years"]):
-                cur *= (1 + a["stage2_growth"]); proj.append(cur)
+                cur *= 1 + a["stage2_growth"]
+                proj.append(cur)
             pv_exp = sum(f / (1 + w) ** (i + 1) for i, f in enumerate(proj))
             tv = proj[-1] * (1 + g) / (w - g) if (w - g) > 0 else 0
             tv_pv = tv / (1 + w) ** len(proj)
@@ -180,16 +191,23 @@ def _sensitivity_table(fcf0, a, net_debt, shares_yi, wacc_center, g_center) -> d
             ps = eq / shares_yi if shares_yi > 0 else 0
             row.append(round(ps, 2))
         rows.append(row)
-    return {"wacc_axis": [f"{round(w*100,1)}%" for w in wacc_row],
-            "g_axis": [f"{round(g*100,1)}%" for g in g_col],
-            "values_per_share": rows, "center_cell": rows[2][2]}
+    return {
+        "wacc_axis": [f"{round(w * 100, 1)}%" for w in wacc_row],
+        "g_axis": [f"{round(g * 100, 1)}%" for g in g_col],
+        "values_per_share": rows,
+        "center_cell": rows[2][2],
+    }
 
 
 def _dcf_verdict(safety_margin: float) -> str:
-    if safety_margin >= 30: return "🟢 深度低估 — 安全边际充足"
-    if safety_margin >= 15: return "🟡 略微低估 — 可关注"
-    if safety_margin >= -15: return "⚪ 基本合理"
-    if safety_margin >= -30: return "🟠 略微高估"
+    if safety_margin >= 30:
+        return "🟢 深度低估 — 安全边际充足"
+    if safety_margin >= 15:
+        return "🟡 略微低估 — 可关注"
+    if safety_margin >= -15:
+        return "⚪ 基本合理"
+    if safety_margin >= -30:
+        return "🟠 略微高估"
     return "🔴 明显高估"
 
 
@@ -197,33 +215,51 @@ def _dcf_verdict(safety_margin: float) -> str:
 # 2. COMPS
 # ═══════════════════════════════════════════════════════════════
 
+
 def build_comps(target: dict, peers: list[dict]) -> dict:
     def _same(p):
         tt = str(target.get("ticker") or target.get("code") or "").strip()
         pt = str(p.get("ticker") or p.get("code") or "").strip()
-        if tt and pt and tt == pt: return True
-        tn = str(target.get("name") or "").strip(); pn = str(p.get("name") or "").strip()
+        if tt and pt and tt == pt:
+            return True
+        tn = str(target.get("name") or "").strip()
+        pn = str(p.get("name") or "").strip()
         return bool(tn and pn and tn == pn)
 
     valid = [p for p in peers if isinstance(p, dict) and not _same(p)]
     if len(valid) < 2:
-        return {"method": "同业可比 (Comps)", "peer_count": len(valid), "peer_stats": {},
-                "target_percentile": {}, "implied_price": {}, "valuation_verdict": "⚪ 同行样本不足 · 无法对标",
-                "methodology_log": [f"有效同行 n={len(valid)}，跳过分位数与估值结论"]}
+        return {
+            "method": "同业可比 (Comps)",
+            "peer_count": len(valid),
+            "peer_stats": {},
+            "target_percentile": {},
+            "implied_price": {},
+            "valuation_verdict": "⚪ 同行样本不足 · 无法对标",
+            "methodology_log": [f"有效同行 n={len(valid)}，跳过分位数与估值结论"],
+        }
 
     metrics = ["pe", "pb", "ps", "ev_ebitda", "ev_sales", "roe", "net_margin", "revenue_growth"]
     stats: dict[str, dict] = {}
     for m in metrics:
         vals = [_num(p.get(m)) for p in valid if _num(p.get(m)) > 0]
-        if not vals: continue
+        if not vals:
+            continue
         q = statistics.quantiles(vals, n=4) if len(vals) > 1 else [vals[0], vals[0], vals[0]]
-        stats[m] = {"min": round(min(vals), 2), "p25": round(q[0], 2), "median": round(statistics.median(vals), 2),
-                    "p75": round(q[2], 2), "max": round(max(vals), 2), "mean": round(sum(vals)/len(vals), 2), "n": len(vals)}
+        stats[m] = {
+            "min": round(min(vals), 2),
+            "p25": round(q[0], 2),
+            "median": round(statistics.median(vals), 2),
+            "p75": round(q[2], 2),
+            "max": round(max(vals), 2),
+            "mean": round(sum(vals) / len(vals), 2),
+            "n": len(vals),
+        }
 
     tgt_pct: dict[str, float] = {}
-    for m, s in stats.items():
+    for m, _s in stats.items():
         tv = _num(target.get(m))
-        if tv <= 0: continue
+        if tv <= 0:
+            continue
         vals = sorted(_num(p.get(m)) for p in valid if _num(p.get(m)) > 0)
         rank = sum(1 for v in vals if v < tv)
         tgt_pct[m] = round(rank / len(vals) * 100, 0) if vals else 50
@@ -236,31 +272,53 @@ def build_comps(target: dict, peers: list[dict]) -> dict:
         implied["via_median_pb"] = round(stats["pb"]["median"] * _num(target.get("bvps")), 2)
 
     pe_pct = tgt_pct.get("pe", 50)
-    if pe_pct <= 25: val = "🟢 便宜（PE 低于 75% 同行）"
-    elif pe_pct <= 50: val = "🟡 合理偏低"
-    elif pe_pct <= 75: val = "⚪ 合理偏高"
-    else: val = "🔴 昂贵（PE 高于 75% 同行）"
+    if pe_pct <= 25:
+        val = "🟢 便宜（PE 低于 75% 同行）"
+    elif pe_pct <= 50:
+        val = "🟡 合理偏低"
+    elif pe_pct <= 75:
+        val = "⚪ 合理偏高"
+    else:
+        val = "🔴 昂贵（PE 高于 75% 同行）"
 
-    return {"method": "同业可比 (Comps)", "peer_count": len(valid), "peer_stats": stats,
-            "target_percentile": tgt_pct, "implied_price": implied, "current_price": cur_px,
-            "valuation_verdict": val,
-            "methodology_log": [f"有效同行池 n={len(valid)}",
-                                f"PE 中位数 {stats.get('pe',{}).get('median','-')} · 目标 PE {target.get('pe','-')}",
-                                f"目标 PE 分位 {pe_pct}%",
-                                f"隐含价(中位PE×EPS)=¥{implied.get('via_median_pe','-')}",
-                                f"结论: {val}"]}
+    return {
+        "method": "同业可比 (Comps)",
+        "peer_count": len(valid),
+        "peer_stats": stats,
+        "target_percentile": tgt_pct,
+        "implied_price": implied,
+        "current_price": cur_px,
+        "valuation_verdict": val,
+        "methodology_log": [
+            f"有效同行池 n={len(valid)}",
+            f"PE 中位数 {stats.get('pe', {}).get('median', '-')} · 目标 PE {target.get('pe', '-')}",
+            f"目标 PE 分位 {pe_pct}%",
+            f"隐含价(中位PE×EPS)=¥{implied.get('via_median_pe', '-')}",
+            f"结论: {val}",
+        ],
+    }
 
 
 # ═══════════════════════════════════════════════════════════════
 # 3. LBO
 # ═══════════════════════════════════════════════════════════════
 
-def quick_lbo(features: dict, entry_multiple=8.0, debt_multiple=5.0, exit_multiple=8.0,
-              hold_years=5, ebitda_growth=0.08, interest_rate=0.06) -> dict:
+
+def quick_lbo(
+    features: dict,
+    entry_multiple=8.0,
+    debt_multiple=5.0,
+    exit_multiple=8.0,
+    hold_years=5,
+    ebitda_growth=0.08,
+    interest_rate=0.06,
+) -> dict:
     ebitda = _num(features.get("ebitda_yi"))
     if ebitda <= 0:
-        rev = _num(features.get("revenue_latest_yi")); nm = _num(features.get("net_margin")) / 100
-        ni = rev * nm; ebitda = ni / 0.6 if ni > 0 else rev * 0.15
+        rev = _num(features.get("revenue_latest_yi"))
+        nm = _num(features.get("net_margin")) / 100
+        ni = rev * nm
+        ebitda = ni / 0.6 if ni > 0 else rev * 0.15
 
     entry_ev = entry_multiple * ebitda
     entry_debt = debt_multiple * ebitda
@@ -268,7 +326,8 @@ def quick_lbo(features: dict, entry_multiple=8.0, debt_multiple=5.0, exit_multip
 
     path, cur = [], ebitda
     for _ in range(1, hold_years + 1):
-        cur *= (1 + ebitda_growth); path.append(round(cur, 2))
+        cur *= 1 + ebitda_growth
+        path.append(round(cur, 2))
 
     debt = entry_debt
     debt_schedule = [round(debt, 2)]
@@ -286,30 +345,44 @@ def quick_lbo(features: dict, entry_multiple=8.0, debt_multiple=5.0, exit_multip
 
     if entry_equity > 0 and exit_equity > 0:
         moic = exit_equity / entry_equity
-        irr = (moic ** (1 / hold_years) - 1)
+        irr = moic ** (1 / hold_years) - 1
     else:
         moic, irr = 0, 0
 
-    return {"method": "杠杆收购测试 (LBO)", "entry_ebitda_yi": round(ebitda, 2),
-            "entry_multiple": entry_multiple, "entry_ev_yi": round(entry_ev, 2),
-            "entry_debt_yi": round(entry_debt, 2), "entry_equity_yi": round(entry_equity, 2),
-            "leverage_turns": debt_multiple, "ebitda_path": path, "debt_schedule": debt_schedule,
-            "exit_ebitda_yi": round(exit_ebitda, 2), "exit_multiple": exit_multiple,
-            "exit_ev_yi": round(exit_ev, 2), "exit_equity_yi": round(exit_equity, 2),
-            "moic": round(moic, 2), "irr_pct": round(irr * 100, 1),
-            "pass_pe_test": irr >= 0.20,
-            "verdict": "🟢 PE 买方可赚 20%+ IRR" if irr >= 0.20 else ("🟡 PE 买方 15-20% IRR" if irr >= 0.15 else "🔴 低于 PE 收益门槛"),
-            "methodology_log": [
-                f"入场 EBITDA {ebitda:.1f}亿 × {entry_multiple}x = EV {entry_ev:.1f}亿",
-                f"{debt_multiple}x 杠杆 → 债 {entry_debt:.1f}亿 + 股本 {entry_equity:.1f}亿",
-                f"{hold_years}年 {(ebitda_growth*100):.0f}% 成长 → Y{hold_years} EBITDA {exit_ebitda:.1f}亿",
-                f"退出 {exit_multiple}x × {exit_ebitda:.1f} = {exit_ev:.1f}亿 EV",
-                f"退出股权 {exit_equity:.1f} / 入场股权 {entry_equity:.1f} = {moic:.2f}x MOIC ({(irr*100):.1f}% IRR)"]}
+    return {
+        "method": "杠杆收购测试 (LBO)",
+        "entry_ebitda_yi": round(ebitda, 2),
+        "entry_multiple": entry_multiple,
+        "entry_ev_yi": round(entry_ev, 2),
+        "entry_debt_yi": round(entry_debt, 2),
+        "entry_equity_yi": round(entry_equity, 2),
+        "leverage_turns": debt_multiple,
+        "ebitda_path": path,
+        "debt_schedule": debt_schedule,
+        "exit_ebitda_yi": round(exit_ebitda, 2),
+        "exit_multiple": exit_multiple,
+        "exit_ev_yi": round(exit_ev, 2),
+        "exit_equity_yi": round(exit_equity, 2),
+        "moic": round(moic, 2),
+        "irr_pct": round(irr * 100, 1),
+        "pass_pe_test": irr >= 0.20,
+        "verdict": "🟢 PE 买方可赚 20%+ IRR"
+        if irr >= 0.20
+        else ("🟡 PE 买方 15-20% IRR" if irr >= 0.15 else "🔴 低于 PE 收益门槛"),
+        "methodology_log": [
+            f"入场 EBITDA {ebitda:.1f}亿 × {entry_multiple}x = EV {entry_ev:.1f}亿",
+            f"{debt_multiple}x 杠杆 → 债 {entry_debt:.1f}亿 + 股本 {entry_equity:.1f}亿",
+            f"{hold_years}年 {(ebitda_growth * 100):.0f}% 成长 → Y{hold_years} EBITDA {exit_ebitda:.1f}亿",
+            f"退出 {exit_multiple}x × {exit_ebitda:.1f} = {exit_ev:.1f}亿 EV",
+            f"退出股权 {exit_equity:.1f} / 入场股权 {entry_equity:.1f} = {moic:.2f}x MOIC ({(irr * 100):.1f}% IRR)",
+        ],
+    }
 
 
 # ═══════════════════════════════════════════════════════════════
 # 汇总
 # ═══════════════════════════════════════════════════════════════
+
 
 def valuation(features: dict, peers: list[dict] | None = None) -> dict:
     """返回 dcf / comps / lbo / fair_price。
@@ -332,7 +405,7 @@ def valuation(features: dict, peers: list[dict] | None = None) -> dict:
 
     dcf_px = dcf.get("intrinsic_per_share") or 0
     comps_px = comps.get("implied_price", {}).get("via_median_pe") or 0
-    has_dcf = dcf_px > 0 and dcf.get("verdict", "").startswith("🟢") or dcf_px > 0
+    has_dcf = (dcf_px > 0 and dcf.get("verdict", "").startswith("🟢")) or dcf_px > 0
     has_comps = comps_px > 0
 
     # 公允价主导锚：Comps 优先（样本充足），否则 DCF
@@ -346,5 +419,12 @@ def valuation(features: dict, peers: list[dict] | None = None) -> dict:
         fair = round(_num(features.get("price")), 2)
         fair_method = "price"
 
-    return {"dcf": dcf, "comps": comps, "lbo": lbo, "fair_price": fair,
-            "fair_method": fair_method, "has_dcf": bool(dcf_px > 0), "has_comps": bool(has_comps)}
+    return {
+        "dcf": dcf,
+        "comps": comps,
+        "lbo": lbo,
+        "fair_price": fair,
+        "fair_method": fair_method,
+        "has_dcf": bool(dcf_px > 0),
+        "has_comps": bool(has_comps),
+    }

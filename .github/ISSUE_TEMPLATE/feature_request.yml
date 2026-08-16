@@ -1,0 +1,33 @@
+name: 💡 功能建议 / Feature Request
+description: 提出一个新想法或改进建议 / Propose an idea or improvement
+title: "[Feature] <一句话描述>"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题背景 / Problem
+      description: 当前缺少什么能力，或哪里不够好？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案 / Proposed solution
+      description: 你希望如何实现（接口形态 / 交互 / 数据源等）。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案 / Alternatives
+      description: 是否考虑过其他做法？
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: 补充上下文 / Additional context
+      description: 截图、参考链接、相关方法论等。
+    validations:
+      required: false

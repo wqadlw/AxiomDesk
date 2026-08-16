@@ -1,12 +1,30 @@
-# -*- coding: utf-8 -*-
 """人格声纹库测试 · 旗舰名言、带数字评语、多空定调、声纹片段、覆盖完整性。"""
+
 from __future__ import annotations
 
-from server.engine import personas, data_provider as DP, investors as INV
+from server.engine import data_provider as DP
+from server.engine import investors as INV
+from server.engine import personas
 
-FLAGSHIP = ["buffett", "munger", "graham", "fisher", "lynch", "soros", "dalio",
-            "marks", "livermore", "duan", "zhangkun", "zhao_lg", "wood",
-            "simons", "zhang_mz", "yangjia", "ghzw"]
+FLAGSHIP = [
+    "buffett",
+    "munger",
+    "graham",
+    "fisher",
+    "lynch",
+    "soros",
+    "dalio",
+    "marks",
+    "livermore",
+    "duan",
+    "zhangkun",
+    "zhao_lg",
+    "wood",
+    "simons",
+    "zhang_mz",
+    "yangjia",
+    "ghzw",
+]
 
 
 def _f():
@@ -30,7 +48,7 @@ def test_build_comment_cites_numbers():
     c = personas.build_comment(inv, f, 8.0, "bullish")
     # 必须引用真实数字：贵州茅台 ROE 31%、PE 24.5 等
     assert ("ROE" in c) or ("PE" in c), f"未引用数字: {c}"
-    assert "：" in c                       # “巴菲特：...” 命名格式
+    assert "：" in c  # “巴菲特：...” 命名格式
     assert "我偏多" in c
 
 
@@ -50,8 +68,7 @@ def test_build_comment_neutral_tail():
 
 def test_build_comment_unknown_investor_no_crash():
     # 非旗舰评委走 9 大流派原型，不应抛错
-    inv = {"id": "novel_inv", "name": "虚构者", "group": "B",
-           "fields": ["1_financials", "10_valuation"]}
+    inv = {"id": "novel_inv", "name": "虚构者", "group": "B", "fields": ["1_financials", "10_valuation"]}
     f = _f()
     c = personas.build_comment(inv, f, 5.0, "neutral")
     assert "我先观望" in c

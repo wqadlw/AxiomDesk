@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
 """结构化日志 · 请求级 request-id 透传。
 
 日志统一携带 request_id，便于在分布式/容器环境中按请求串联；
 log_json=True 时输出单行 JSON，可直接被 Loki/ELK 采集。
 """
+
 from __future__ import annotations
 
 import contextvars
@@ -66,9 +66,7 @@ def setup_logging() -> logging.Logger:
     logger.addHandler(stream)
 
     if settings.log_file:
-        fh = RotatingFileHandler(
-            settings.log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
-        )
+        fh = RotatingFileHandler(settings.log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8")
         fh.setFormatter(formatter)
         fh.addFilter(rid_filter)
         logger.addHandler(fh)

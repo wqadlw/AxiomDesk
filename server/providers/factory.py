@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Provider 工厂 · 组合 failover + 缓存。
 
 get_provider() 现在由「配置存储」(config.json) 驱动：
@@ -12,14 +11,16 @@ get_provider() 现在由「配置存储」(config.json) 驱动：
 零依赖直连源（腾讯/新浪/东方财富）在本环境即可工作；重型库（akshare/efinance/
 tushare/baostock）需用户自行安装并启用，未安装时自动跳过。
 """
+
 from __future__ import annotations
 
+# 注意：config_store 在此处必须延迟导入（见各函数内局部 import），否则会与
+# routes → config_store → providers.__init__ → factory → config_store 形成循环导入。
 from .base import DataProvider, ProviderError
 from .cache import Cache
 from .config_shim import get_settings  # 延迟取配置，避免循环导入
 from .demo import DemoDataProvider
-from .registry import class_for, DEFAULT_PROVIDER_ORDER
-from ..config_store import get_config, invalidate as _invalidate_cfg, effective_data_source
+from .registry import DEFAULT_PROVIDER_ORDER, class_for
 
 
 class FallbackProvider(DataProvider):
@@ -85,11 +86,10 @@ def _build_instance(pid: str, pc: dict) -> DataProvider | None:
 
 def _build_chain(demo: DataProvider) -> DataProvider:
     """按 enabled + priority 升序构建 failover 链；全不可用则返回 demo。"""
+    from ..config_store import get_config
+
     cfg = get_config()
-    enabled = [
-        (pid, pc) for pid, pc in cfg["providers"].items()
-        if pc.get("enabled") and pid in DEFAULT_PROVIDER_ORDER
-    ]
+    enabled = [(pid, pc) for pid, pc in cfg["providers"].items() if pc.get("enabled") and pid in DEFAULT_PROVIDER_ORDER]
     enabled.sort(key=lambda kv: (kv[1].get("priority", 99), DEFAULT_PROVIDER_ORDER.index(kv[0])))
     # 反向构建：优先级数值最小（最高优先）的 provider 作为最外层 primary，
     # 优先级更低者依次作为其后备（fallback）。
@@ -108,6 +108,8 @@ def _build_chain(demo: DataProvider) -> DataProvider:
 
 
 def _build_single(pid: str, demo: DataProvider) -> DataProvider:
+    from ..config_store import get_config
+
     cfg = get_config()
     pc = cfg["providers"].get(pid)
     if not pc or pid not in DEFAULT_PROVIDER_ORDER:
@@ -134,6 +136,8 @@ def get_provider() -> DataProvider:
     if _PROVIDER is not None:
         return _PROVIDER
 
+    from ..config_store import effective_data_source, get_config
+
     cfg = get_config()
     settings = get_settings()
     demo = DemoDataProvider()
@@ -154,11 +158,15 @@ def get_provider() -> DataProvider:
 
 def reload_provider():
     """配置变更后重建链路（同时清掉配置缓存）。"""
+    from ..config_store import invalidate as _invalidate_cfg
+
     global _PROVIDER
     _PROVIDER = None
     _invalidate_cfg()
 
 
 def active_source_name() -> str:
+    from ..config_store import get_config
+
     cfg = get_config()
     return cfg.get("data_source", "auto")

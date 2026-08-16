@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 """Provider 抽象基类 + 与数据源无关的派生特征函数。"""
+
 from __future__ import annotations
 
-import math
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -29,12 +28,10 @@ class DataProvider(ABC):
     name: str = "base"
 
     @abstractmethod
-    def get_profile(self, ticker: str) -> dict:
-        ...
+    def get_profile(self, ticker: str) -> dict: ...
 
     @abstractmethod
-    def get_peers(self, ticker: str, profile: dict, n: int = 5) -> list[dict]:
-        ...
+    def get_peers(self, ticker: str, profile: dict, n: int = 5) -> list[dict]: ...
 
     def is_available(self) -> bool:
         return True
@@ -58,13 +55,21 @@ def derive_features(p: dict) -> dict:
         "total_debt_yi": p.get("total_debt_yi"),
         "cash_yi": p.get("cash_yi"),
         "equity_yi": p.get("equity_yi"),
-        "pe": p["pe"], "pb": p["pb"], "ps": p["ps"],
-        "eps": p.get("eps"), "bvps": p.get("bvps"),
-        "roe": p["roe"], "revenue_growth": p["rev_growth"],
-        "debt_ratio": p["debt_ratio"], "beta": p.get("beta", 1.0),
-        "moat": p["moat"], "momentum": p["momentum"], "volatility": p["volatility"],
+        "pe": p["pe"],
+        "pb": p["pb"],
+        "ps": p["ps"],
+        "eps": p.get("eps"),
+        "bvps": p.get("bvps"),
+        "roe": p["roe"],
+        "revenue_growth": p["rev_growth"],
+        "debt_ratio": p["debt_ratio"],
+        "beta": p.get("beta", 1.0),
+        "moat": p["moat"],
+        "momentum": p["momentum"],
+        "volatility": p["volatility"],
         "institutional_ratio": p.get("instr_ratio", 40),
-        "sentiment": p.get("sentiment", 5), "lhb_count": p.get("lhb_count", 0),
+        "sentiment": p.get("sentiment", 5),
+        "lhb_count": p.get("lhb_count", 0),
     }
     # 派生标记
     mc = p["mcap_yi"]
@@ -84,4 +89,39 @@ def derive_features(p: dict) -> dict:
     f["is_sector_leader"] = (p.get("instr_ratio", 40) >= 55) or p.get("is_liquor") or p.get("is_ai")
     f["max_institution_pct"] = 100
     f["ai_theme"] = bool(p.get("is_ai") or p.get("is_tech"))
+
+    # ── 由真实行情反推基本面（PE/PB 为实时字段，可严格推导 EPS/BVPS/ROE）──
+    # 这样即便数据源未提供完整财报，任意有实时 PE/PB 的标的都能得到有意义的基本面，
+    # 避免「深度分析」跑在一堆 0 值上而产出空洞结论。
+    _price = float(p.get("price") or 0)
+    _pe = float(p.get("pe") or 0)
+    _pb = float(p.get("pb") or 0)
+    if _price and _pe and not f.get("eps"):
+        f["eps"] = round(_price / _pe, 3)
+    if _price and _pb and not f.get("bvps"):
+        f["bvps"] = round(_price / _pb, 3)
+    if _pe and _pb and not f.get("roe"):
+        # ROE = NI/E = (EPS)/(BVPS) = (P/PE)/(P/PB) = PB/PE  （TTM 近似）
+        f["roe"] = round(_pb / _pe * 100, 2)
+
+    # ── 数据来源溯源（数据可信度透明化，避免「假自信」结论）──
+    _src = str(p.get("source", ""))
+    _quote_live = ("实时" in _src) or ("live" in _src.lower())
+    _real_fund = (
+        (p.get("revenue_yi") not in (0, None))
+        or (p.get("roe") not in (0, None))
+        or (p.get("net_margin") not in (0, None, 0.0))
+        or (p.get("fcf_yi") not in (None,))
+    )
+    if _quote_live and _real_fund:
+        _fund = "live"
+    elif _quote_live:
+        _fund = "estimated"  # 行情实时，但财报缺失 → 由 PE/PB 估算
+    else:
+        _fund = "demo"  # 离线合成
+    f["data_quality"] = {
+        "quote": "live" if _quote_live else "demo",
+        "fundamentals": _fund,
+        "estimated": _fund == "estimated",
+    }
     return f

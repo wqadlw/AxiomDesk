@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """异步任务 + 历史持久化 · SQLite 支撑（纯 stdlib，零外部依赖）。
 
 职责：
@@ -11,6 +10,7 @@
   - 写入串行化（threading.Lock），避免并发写损坏
   - JSON 序列化对 NaN/Inf 做净化，保证前端可解析
 """
+
 from __future__ import annotations
 
 import json
@@ -20,7 +20,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import settings
 from .engine import engine
@@ -40,7 +40,7 @@ def _sanitize(o: Any) -> Any:
 
 
 class JobStore:
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         self.db = Path(db_path or settings.data_dir) / "history.db"
         self.db.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
@@ -111,19 +111,29 @@ class JobStore:
             c.execute(
                 "INSERT INTO analyses(id, ticker, depth, boost, status, created_at, finished_at, source, overall, verdict, result) "
                 "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                (jid, ticker.strip().upper(), depth, int(boost), "done", time.time(), time.time(),
-                 (result.get("ai") or {}).get("_source"), result.get("overall_score"),
-                 result.get("verdict"), payload),
+                (
+                    jid,
+                    ticker.strip().upper(),
+                    depth,
+                    int(boost),
+                    "done",
+                    time.time(),
+                    time.time(),
+                    (result.get("ai") or {}).get("_source"),
+                    result.get("overall_score"),
+                    result.get("verdict"),
+                    payload,
+                ),
             )
         return jid
 
     # ── 读 ──
-    def get(self, jid: str) -> Optional[dict]:
+    def get(self, jid: str) -> dict | None:
         with self._conn() as c:
             r = c.execute("SELECT * FROM analyses WHERE id=?", (jid,)).fetchone()
         return dict(r) if r else None
 
-    def get_result(self, jid: str) -> Optional[dict]:
+    def get_result(self, jid: str) -> dict | None:
         row = self.get(jid)
         if not row or not row.get("result"):
             return None
@@ -132,7 +142,7 @@ class JobStore:
         except (ValueError, TypeError):
             return None
 
-    def list(self, limit: int = 50, ticker: Optional[str] = None) -> list[dict]:
+    def list(self, limit: int = 50, ticker: str | None = None) -> list[dict]:
         with self._conn() as c:
             if ticker:
                 rows = c.execute(
@@ -140,25 +150,32 @@ class JobStore:
                     (ticker.strip().upper(), int(limit)),
                 ).fetchall()
             else:
-                rows = c.execute(
-                    "SELECT * FROM analyses ORDER BY created_at DESC LIMIT ?", (int(limit),)
-                ).fetchall()
+                rows = c.execute("SELECT * FROM analyses ORDER BY created_at DESC LIMIT ?", (int(limit),)).fetchall()
         return [dict(r) for r in rows]
 
-    def summary_rows(self, limit: int = 50, ticker: Optional[str] = None) -> list[dict]:
+    def summary_rows(self, limit: int = 50, ticker: str | None = None) -> list[dict]:
         """历史列表用的精简视图（不含完整 result，省流量）。"""
         out = []
         for r in self.list(limit=limit, ticker=ticker):
-            out.append({
-                "id": r["id"], "ticker": r["ticker"], "depth": r["depth"], "boost": r["boost"],
-                "status": r["status"], "created_at": r["created_at"], "finished_at": r["finished_at"],
-                "source": r.get("source"), "overall": r.get("overall"), "verdict": r.get("verdict"),
-            })
+            out.append(
+                {
+                    "id": r["id"],
+                    "ticker": r["ticker"],
+                    "depth": r["depth"],
+                    "boost": r["boost"],
+                    "status": r["status"],
+                    "created_at": r["created_at"],
+                    "finished_at": r["finished_at"],
+                    "source": r.get("source"),
+                    "overall": r.get("overall"),
+                    "verdict": r.get("verdict"),
+                }
+            )
         return out
 
 
 # 模块级单例（被 API 层共享）
-_store: Optional[JobStore] = None
+_store: JobStore | None = None
 
 
 def get_store() -> JobStore:

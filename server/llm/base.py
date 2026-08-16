@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """LLM 抽象层 · 让分析终端的"判断层"可被真实大模型驱动。
 
 设计原则（企业级）：
@@ -6,6 +5,7 @@
   - 无 API key 时自动降级到 TemplateProvider（确定性、离线、可单测），应用永不因缺 key 而崩溃。
   - 所有 Provider 产出**同一份 schema**，前端只认一份结构，与底层是否联网无关。
 """
+
 from __future__ import annotations
 
 import abc
@@ -20,8 +20,9 @@ class LLMProvider(abc.ABC):
     online: bool = False
 
     @abc.abstractmethod
-    def complete(self, system: str, user: str, *, max_tokens: int = 2000,
-                 temperature: float = 0.3, timeout: float = 60) -> str:
+    def complete(
+        self, system: str, user: str, *, max_tokens: int = 2000, temperature: float = 0.3, timeout: float = 60
+    ) -> str:
         """返回模型生成的纯文本。"""
         raise NotImplementedError
 

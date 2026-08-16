@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """配置页后端 API 测试（GET/PUT/reset/test）。通过 TestClient 验证。"""
+
 from __future__ import annotations
 
 import pytest
