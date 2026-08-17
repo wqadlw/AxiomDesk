@@ -1,4 +1,4 @@
-# UZI Terminal · 轻量生产镜像
+# AxiomDesk · 轻量生产镜像
 # 依赖与工具配置统一收敛于 pyproject.toml（唯一事实来源）。
 FROM python:3.11-slim
 
@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir .
 
 # 非 root 运行
-RUN useradd -m -u 10001 uzi && chown -R uzi:uzi /app
-USER uzi
+RUN useradd -m -u 10001 axiom && chown -R axiom:axiom /app
+USER axiom
 
 EXPOSE 8137
 

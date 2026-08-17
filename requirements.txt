@@ -1,4 +1,4 @@
-# UZI 投研终端 · 运行时依赖（Docker / 生产部署用）
+# AxiomDesk · 运行时依赖（Docker / 生产部署用）
 # 注意：本地开发请以 pyproject.toml 为唯一事实来源（`pip install -e ".[dev]"`），
 # 本文件与 pyproject.toml 的 [project.dependencies] 保持同步，供 Docker 精简安装。
 

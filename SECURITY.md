@@ -13,7 +13,7 @@
 
 请将安全问题以私密方式报告给维护者：
 
-- 邮箱：uzi-terminal-security@example.com （占位地址，请替换为项目实际安全联系邮箱）
+- 邮箱：axiomdesk-security@example.com （占位地址，请替换为项目实际安全联系邮箱）
 - 或在 GitHub 上使用仓库的 **Security → Report a vulnerability** 私有提交（如已启用）
 
 请在报告中尽量包含：

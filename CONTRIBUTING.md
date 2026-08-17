@@ -1,6 +1,6 @@
 # 贡献指南 (Contributing)
 
-感谢你考虑为 **UZI Terminal** 做出贡献！本文档说明如何本地开发、提交 Issue 与 PR。
+感谢你考虑为 **AxiomDesk** 做出贡献！本文档说明如何本地开发、提交 Issue 与 PR。
 
 ## 行为准则
 
@@ -16,8 +16,8 @@
 
 ```bash
 # 1. Fork 并克隆你的副本
-git clone https://github.com/<you>/uzi-terminal.git
-cd uzi-terminal
+git clone https://github.com/<you>/axiomdesk.git
+cd axiomdesk
 
 # 2. 创建虚拟环境（推荐）
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate

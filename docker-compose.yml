@@ -1,8 +1,8 @@
 services:
-  uzi-terminal:
+  axiomdesk:
     build: .
-    image: uzi-terminal:latest
-    container_name: uzi-terminal
+    image: axiomdesk:latest
+    container_name: axiomdesk
     ports:
       - "8137:8137"
     environment:
@@ -20,7 +20,7 @@ services:
       retries: 3
       start_period: 15s
     volumes:
-      - uzi-data:/app/.data
+      - axiom-data:/app/.data
 
 volumes:
-  uzi-data:
+  axiom-data:

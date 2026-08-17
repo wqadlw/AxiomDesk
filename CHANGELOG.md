@@ -11,6 +11,10 @@
 - **OpenAPI 元数据修正**：`app.py` 的 `version` 与 `description` 由过期的 `2.0.0` / "UZI-Skill 企业级落地" 更正为 `3.0.1` / AxiomDesk 四层研判说明，与 API `API_VERSION` 及品牌一致。
 - **前端专业度**：补齐 favicon（内联 SVG 菱形标）、`meta description` / `theme-color` / `color-scheme`；新增全局页脚（版本号 + 免责声明）；前端错误读取统一为后端 `error` 信封（`d.error || d.detail`），使操作失败提示展示真实服务端原因。
 
+### 开源发布准备（品牌一致性清理）
+- 统一散落的「UZI Terminal / UZI 投研终端」文案为 **AxiomDesk**：`LICENSE` 版权名、`.env.example` / `requirements.txt` 标题、`Dockerfile` 注释与非 root 用户（`uzi`→`axiom`）、`docker-compose.yml` 服务/镜像/容器/卷名、`start.sh` / `start.bat`、`CONTRIBUTING.md` 克隆示例、`SECURITY.md` / `CODE_OF_CONDUCT.md` 安全联系邮箱、`docs/ARCHITECTURE.md` 开头。
+- 有意保留项：`CHANGELOG.md` 中的历史重命名记录、`pyproject.toml` 的 `uzi-terminal` 兼容入口别名、真实配置环境变量前缀 `UZI_*`（引擎/配置系统仍读取，未改）。
+
 ### 交易逻辑边界（已审计）
 - 引擎层除零 / 空值 / AI 失败全部已有守卫：除零处均 `if base else 0.0` 等保护；`engine.analyze` 对 K 线取数、AI 叙述、记忆召回/沉淀均做 try/except 优雅降级（AI 失败回退离线模板）；计划/监控/评分模块对 `close<=0`、`risk>0`、`price` 等做了边界处理。本轮未改动引擎逻辑，仅以测试锁定契约。
 
