@@ -3,6 +3,30 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.4.0] — 2026-08-17
+
+### 新功能：资金流向面板（融合 go-stock-dev 资金流面板 + adata 五档资金流 + a-stock-data 板块资金流）
+- 新增端点 `GET /api/capital-flow`（双前缀）：个股五档资金流——超大单 / 大单 / 中单 / 小单 当日与 20 日净流入、主力净额与占流通比。
+- 新增端点 `GET /api/capital-flow/board`：板块资金流榜——行业 / 概念板块今日·5日·10日 主力净流入排行。
+- 新增端点 `GET /api/capital-flow/north`：北向资金——沪股通 / 深股通 / 合计 当日与 5 日净流入。
+- 前端「**资金流向**」Tab：个股查询 + 五档表 + 板块榜 + 北向卡片，红涨绿跌着色。
+
+### 新功能：市场情绪仪表盘（融合 aiagents-stock 恐惧贪婪指数 + 涨跌停统计 + 量能热度）
+- 新增端点 `GET /api/sentiment`：恐惧贪婪指数（50 + (上涨占比−0.5)×60，5 档）+ 涨跌家数 / 涨跌停 / 炸板 / 量能热度 / 量比 + 定性情绪信号。
+- 前端「**市场情绪**」Tab：半圆仪表盘可视化 + 统计卡片 + 情绪信号。
+
+### 新功能：风险监控（融合 TradingAgents 解禁减持三条封杀线 + 估值异常扫描）
+- 新增端点 `GET /api/risk-watch`：个股级返回解禁减持压力（减持新规三条封杀线：破发 / 破净 / 分红不达标）+ 估值异常（PE>100 / PB>10）；市场级扫描样本池输出解禁压力 TOP 与估值异常清单。
+- 前端「**风险监控**」Tab：个股 / 市场级切换，解禁压力卡片 + 三条封杀线判定 + 估值异常标签。
+
+### 新功能：财经日历（融合 stock-master 解禁/分红/定增爬虫 + aiagents-stock 事件风控）
+- 新增端点 `GET /api/event-calendar`：未来 N 日时间线——限售解禁 / 定向增发 / 分红派息 / 财报披露，按日期升序；支持个股级 / 市场级汇总。
+- 前端「**财经日历**」Tab：时间线列表，按事件类型配色，支持窗口（15/30/60 日）与个股筛选。
+
+### 工程
+- API 版本 `3.3.0 → 3.4.0`；新增 `server/services/_synth_extra.py`、`capital_flow.py`、`market_sentiment.py`、`risk_watch.py`、`event_calendar.py` 及测试 `test_capital_flow.py` / `test_sentiment.py` / `test_risk_watch.py` / `test_event_calendar.py`。
+- 全部为确定性合成数据（不联网），对接 `AXIOM_DATA_SOURCE=demo` 时一致；质量门禁全绿：ruff(lint+format) · mypy · pytest(81%) · bandit(0 High) · node --check。
+
 ## [3.3.0] — 2026-08-17
 
 ### 新功能：选股引擎（融合 Sequoia-X RPS 相对强度 + InStock 因子扫描 + stock-master 形态选股）

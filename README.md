@@ -61,12 +61,16 @@ flowchart TB
 - **板块轮动矩阵**：直连东财抓取行业 / 概念板块的**今日 · 5日 · 10日涨跌幅**与**主力净流入 / 净占比**，自动派生「10日强势主线 / 弱势板块」两组清单，前端「板块轮动」Tab 用红涨绿跌配色定位板块轮动方向（融合自 tickflow-stock-panel 轮动矩阵 + a-stock-data 板块资金流）。
 - **选股引擎**：复用内置 `engine` 的 `compute_all`（含 RPS 相对强度，基准上证指数）与 `detect_all`（18 个实战形态信号），对一个股票池批量扫描并给出综合评分（0~100 = 信号强度 50% + RPS 25% + 动量 15% + 筹码集中度 10%）。支持 `universe=demo|watchlist`、自定义 `tickers`、按评分 / RPS / 信号数 / 动量排序与过滤，前端「选股」Tab 输出排名表（融合自 Sequoia-X RPS 相对强度 + InStock 因子扫描 + stock-master 形态选股）。
 - **盘后速览**：`GET /api/daily-digest` 把情绪快照 / 连板梯队 / 板块轮动 / 龙虎榜游资评分聚合成收盘后「一页速览」（情绪 · 主线 · 异动 · 风险 + 游资焦点），前端「盘后速览」Tab 直接呈现，融合自 daily_stock_analysis 的收盘复盘思路。
+- **资金流向面板**：`GET /api/capital-flow` 返回个股五档资金流（超大/大/中/小单当日与 20 日净流入、主力净额与占流通比）；`/api/capital-flow/board` 板块资金流榜（行业/概念 主力净流入排行）；`/api/capital-flow/north` 北向资金（沪深港通当日与 5 日净流入）。前端「资金流向」Tab 一览个股五档表 + 板块榜 + 北向卡片（融合自 go-stock-dev 资金流面板 + adata 五档净流入 + a-stock-data 板块资金流）。
+- **市场情绪仪表盘**：`GET /api/sentiment` 输出恐惧贪婪指数（50 + (上涨占比−0.5)×60，5 档）+ 涨跌家数 / 涨跌停 / 炸板 / 量能热度 / 量比 + 定性情绪信号。前端「市场情绪」Tab 以半圆仪表盘可视化（融合自 aiagents-stock 恐惧贪婪指数方法论）。
+- **风险监控**：`GET /api/risk-watch` 个股级返回解禁减持压力（减持新规三条封杀线：破发 / 破净 / 分红不达标）+ 估值异常（PE>100 / PB>10）；市场级扫描样本池输出解禁压力 TOP 与估值异常清单。前端「风险监控」Tab 支持个股 / 市场级切换（融合自 TradingAgents 解禁减持风控体系）。
+- **财经日历**：`GET /api/event-calendar` 输出未来 N 日时间线——限售解禁 / 定向增发 / 分红派息 / 财报披露，按日期升序；支持个股级 / 市场级汇总。前端「财经日历」Tab 按事件类型配色呈现（融合自 stock-master 解禁/分红/定增爬虫 + aiagents-stock 事件风控）。
 - **实证策略信号**：18 个实战形态信号（含 KDJ / BOLL / RSI / CCI / OBV / 筹码分布 CYQ / RPS 相对强度），每个信号附 1/5/20 日**历史胜率回测**，标注「实证可信 / 实证偏弱」；前端「信号回测」Tab 可对单只标的运行回放、绘制演示净值曲线（总收益 / 最大回撤 / 夏普），融合自 tickflow 回测可视化 + instock rate_stats。
 - **游资专精分析**：龙虎榜席位 / 净买 / 机构 / 主力五维确定性打分（0~100），作为 AI 研判的「第二轨」校验锚点；游资派买入区间由 POC 与净买额真实计算。另设 `GET /api/longhubang` 端点与「连板梯队」Tab 内嵌的龙虎榜评分卡片（资金含金量 / 净流入 / 抛压 / 机构共振 / 顶级游资席位命中五维加权，给出抢筹档位与席位标签），融合自 aiagents-stock 的 longhubang_scoring 体系。
 - **执行层闭环**：自选股实时盈亏 → 多情景操作计划（入场区 / 止损 / 目标 / RR / 仓位）→ 盘中 5 类事件预警（30 分钟去重），配「自选·监控」前端面板。
 - **跨会话记忆**：每只股票独立沉淀「事实 / 观点 / 决策」记忆（SQLite），下次分析自动回填给 AI 研判层，保持决策连续性。
 - **AI 研判层**：接入真实 DeepSeek（OpenAI 兼容协议，零额外 SDK）；无 Key 时自动降级为离线「模板研判」，结论含数字引用与「但是」结构，并新增**辩论主持人收束**（条件化执行结论）。
-- **彭博风终端**：原生 JS / CSS 前端（无构建步骤），红涨绿跌（中国习惯），16 个 Tab 全景呈现分析结论。
+- **彭博风终端**：原生 JS / CSS 前端（无构建步骤），红涨绿跌（中国习惯），20 个 Tab 全景呈现分析结论。
 - **工程化就绪**：FastAPI 版本化 API（`/api` + `/api/v1`）、结构化日志与 Request-ID、异步任务 + SQLite 历史、横向对比、Docker / Compose / Makefile / CI。
 
 ---
@@ -76,7 +80,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph Browser["浏览器 (web/ 原生 JS/CSS · 红涨绿跌)"]
-        UI[彭博风终端 · 16 Tab · 含「自选·监控 / 连板梯队 / 板块轮动 / 信号回测 / 选股 / 盘后速览」]
+        UI[彭博风终端 · 20 Tab · 含「自选·监控 / 连板梯队 / 板块轮动 / 信号回测 / 选股 / 盘后速览 / 资金流向 / 市场情绪 / 风险监控 / 财经日历」]
     end
     subgraph API["FastAPI 应用 (server/app.py)"]
         R[api/routes.py<br/>版本化路由 · 统一异常 · CORS · Request-ID]
@@ -219,6 +223,12 @@ start.bat         # Windows 双击
 | GET  | `/api/backtest?ticker=600519&days=130` | 信号胜率回测 + 演示净值曲线（融合 tickflow 回测可视化 + instock rate_stats） |
 | GET  | `/api/screener?universe=demo&sort=score&limit=30` | 选股引擎：股票池批量评分（信号强度 + RPS + 动量 + 筹码），支持 watchlist / 自定义池 / 过滤（融合 Sequoia-X RPS + InStock 因子 + stock-master 形态） |
 | GET  | `/api/daily-digest` | 盘后速览：聚合情绪 / 连板 / 板块 / 龙虎榜为一页速览（融合 daily_stock_analysis 复盘） |
+| GET  | `/api/capital-flow?ticker=600519` | 资金流向：个股五档资金流（超大/大/中/小单净流入、主力净额与占流通比，融合 go-stock-dev + adata） |
+| GET  | `/api/capital-flow/board?scope=industry&topn=20` | 资金流向：板块资金流榜（行业 / 概念 主力净流入排行，融合 a-stock-data 板块资金流） |
+| GET  | `/api/capital-flow/north` | 资金流向：北向资金（沪股通 / 深股通 / 合计 当日与 5 日净流入，融合 adata 沪深港通） |
+| GET  | `/api/sentiment` | 市场情绪：恐惧贪婪指数 + 涨跌停统计 + 量能热度（融合 aiagents-stock 恐惧贪婪指数方法论） |
+| GET  | `/api/risk-watch?ticker=600519` | 风险监控：解禁减持三条封杀线 + 估值异常扫描（融合 TradingAgents 解禁减持风控） |
+| GET  | `/api/event-calendar?days=30` | 财经日历：解禁 / 定增 / 分红 / 财报时间线（融合 stock-master 解禁/分红/定增爬虫） |
 
 完整请求 / 响应示例见 [docs/API.md](docs/API.md)。
 
@@ -306,6 +316,10 @@ ruff format --check server/ tests/
 - [x] 信号胜率回测端点 + 净值可视化（单标的回放 + 演示净值曲线）
 - [x] 选股引擎（RPS + 因子 + 形态批量评分，demo / watchlist / 自定义池）
 - [x] 盘后速览（情绪 / 主线 / 异动 / 风险 一页聚合）
+- [x] 资金流向面板（个股五档资金流 / 板块资金榜 / 北向资金）
+- [x] 市场情绪仪表盘（恐惧贪婪指数 / 涨跌停统计 / 量能热度）
+- [x] 风险监控（解禁减持三条封杀线 / 估值异常扫描）
+- [x] 财经日历（解禁 / 定增 / 分红 / 财报时间线）
 - [ ] 财务数据真实化（接入财报接口补全营收 / 净利 / ROE 等）
 - [ ] 报告导出（PDF / Markdown）
 - [ ] 报告对比快照（同一标的跨日 diff）

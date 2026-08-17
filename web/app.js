@@ -107,7 +107,7 @@
   }
 
   // ───────── 导航 ─────────
-  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest", screener: "screener", digest: "digest" };
+  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest", screener: "screener", digest: "digest", capital: "capital", sentiment: "sentiment", risk: "risk", calendar: "calendar" };
   function setupNav() {
     $$("#nav .nav-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -126,6 +126,10 @@
           if (view === "backtest") renderBacktest();
           if (view === "screener") renderScreener();
           if (view === "digest") renderDailyDigest();
+          if (view === "capital") renderCapitalFlow();
+          if (view === "sentiment") renderSentiment();
+          if (view === "risk") renderRiskWatch();
+          if (view === "calendar") renderEventCalendar();
           return;
         }
         // 个股 report 内部 tab
@@ -818,6 +822,204 @@
     }
   }
 
+  // ───────── 资金流向（融合 go-stock-dev 资金流面板 + adata 五档资金流）─────────
+  async function renderCapitalFlow() {
+    const panel = $("#tab-capital");
+    panel.innerHTML = '<div class="loading-title">正在拉取资金流向…</div>';
+    try {
+      const ticker = ($("#cf-ticker").value || "600519").trim();
+      const [cf, bf, nf] = await Promise.all([
+        (await fetch(`${api}/api/capital-flow?ticker=${encodeURIComponent(ticker)}`)).json(),
+        (await fetch(`${api}/api/capital-flow/board?scope=industry&topn=12`)).json(),
+        (await fetch(`${api}/api/capital-flow/north`)).json(),
+      ]);
+      const main = cf.main_net_inflow_yi || 0;
+      const tiers = cf.tiers || {};
+      const tierRow = (label, t, cls) => `<div class="cf-row ${cls}"><span class="cf-tier">${label}</span>`
+        + `<span class="${t.today_yi >= 0 ? "chg-pos" : "chg-neg"}">${t.today_yi >= 0 ? "+" : ""}${fmt(t.today_yi, 2)}亿</span>`
+        + `<span class="${t.twenty_d_yi >= 0 ? "chg-pos" : "chg-neg"}">${t.twenty_d_yi >= 0 ? "+" : ""}${fmt(t.twenty_d_yi, 2)}亿</span></div>`;
+      let html = `<div class="cf-head"><div class="cf-name">${esc(cf.name || ticker)} <i>${esc(ticker)}</i></div>`
+        + `<div class="cf-verdict ${main >= 0 ? "chg-pos" : "chg-neg"}">${cf.verdict} · ${cf.strength_grade}度</div></div>`;
+      html += '<div class="cf-overview">';
+      html += `<div class="ov-card"><div class="ov-val ${main >= 0 ? "chg-pos" : "chg-neg"}">${main >= 0 ? "+" : ""}${fmt(main, 2)}亿</div><div class="ov-label">主力当日净流入</div></div>`;
+      html += `<div class="ov-card"><div class="ov-val ${cf.main_net_inflow_20d_yi >= 0 ? "chg-pos" : "chg-neg"}">${cf.main_net_inflow_20d_yi >= 0 ? "+" : ""}${fmt(cf.main_net_inflow_20d_yi, 1)}亿</div><div class="ov-label">主力20日净流入</div></div>`;
+      html += `<div class="ov-card"><div class="ov-val">${fmt(cf.main_pct_float, 2)}%</div><div class="ov-label">占流通市值</div></div>`;
+      html += `<div class="ov-card"><div class="ov-val">¥${fmt(cf.price)}</div><div class="ov-label">现价</div></div>`;
+      html += "</div>";
+      html += '<h3 class="ladder-h">五档资金流（当日 / 20日 净流入，亿元）</h3>';
+      html += '<div class="cf-table"><div class="cf-th"><span>档位</span><span>当日</span><span>20日</span></div>';
+      html += tierRow("超大单", tiers.xlarge || { today_yi: 0, twenty_d_yi: 0 }, "cf-xl");
+      html += tierRow("大单", tiers.large || { today_yi: 0, twenty_d_yi: 0 }, "cf-lg");
+      html += tierRow("中单", tiers.medium || { today_yi: 0, twenty_d_yi: 0 }, "cf-md");
+      html += tierRow("小单", tiers.small || { today_yi: 0, twenty_d_yi: 0 }, "cf-sm");
+      html += "</div>";
+
+      // 板块资金榜
+      const rows = (bf.rows || []).slice(0, 12);
+      if (rows.length) {
+        html += '<h3 class="ladder-h">板块资金流榜（行业 · 主力净流入 TOP）</h3><div class="cf-board">';
+        rows.forEach(r => {
+          const sign = r.net_inflow_yi >= 0 ? "+" : "";
+          html += `<div class="cfb-row"><span class="cfb-name">${esc(r.name)}</span><span class="${r.change_pct >= 0 ? "chg-pos" : "chg-neg"}">${(r.change_pct * 100).toFixed(2)}%</span><span class="${r.net_inflow_yi >= 0 ? "chg-pos" : "chg-neg"}">${sign}${fmt(r.net_inflow_yi, 1)}亿</span></div>`;
+        });
+        html += "</div>";
+      }
+
+      // 北向资金
+      const tgt = nf.tgt_yi || 0;
+      html += `<h3 class="ladder-h">北向资金 <span class="cfb-src">${nf.date || ""}</span></h3><div class="cf-north">`;
+      html += `<div class="ov-card"><div class="ov-val ${nf.hgt_yi >= 0 ? "chg-pos" : "chg-neg"}">${nf.hgt_yi >= 0 ? "+" : ""}${fmt(nf.hgt_yi, 1)}亿</div><div class="ov-label">沪股通</div></div>`;
+      html += `<div class="ov-card"><div class="ov-val ${nf.sgt_yi >= 0 ? "chg-pos" : "chg-neg"}">${nf.sgt_yi >= 0 ? "+" : ""}${fmt(nf.sgt_yi, 1)}亿</div><div class="ov-label">深股通</div></div>`;
+      html += `<div class="ov-card"><div class="ov-val ${tgt >= 0 ? "chg-pos" : "chg-neg"}">${tgt >= 0 ? "+" : ""}${fmt(tgt, 1)}亿</div><div class="ov-label">合计(${nf.trend})</div></div>`;
+      html += `<div class="ov-card"><div class="ov-val ${nf.tgt_5d_yi >= 0 ? "chg-pos" : "chg-neg"}">${nf.tgt_5d_yi >= 0 ? "+" : ""}${fmt(nf.tgt_5d_yi, 1)}亿</div><div class="ov-label">5日合计</div></div>`;
+      html += "</div>";
+
+      html += `<div class="ladder-note">${esc(cf.note || "")} · 红涨绿跌</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">资金流向加载失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  // ───────── 市场情绪（融合 aiagents-stock 恐惧贪婪指数）─────────
+  async function renderSentiment() {
+    const panel = $("#tab-sentiment");
+    panel.innerHTML = '<div class="loading-title">正在生成市场情绪快照…</div>';
+    try {
+      const d = await (await fetch(`${api}/api/sentiment`)).json();
+      const fg = d.fear_greed ?? 50;
+      const col = fg >= 75 ? "#f0495e" : fg >= 60 ? "#ef9b4d" : fg >= 45 ? "#f5a623" : fg >= 30 ? "#6fcf97" : "#21c08a";
+      let html = '<div class="ms-wrap">';
+      html += `<div class="ms-gauge"><svg width="180" height="180" viewBox="0 0 180 180">`
+        + `<circle cx="90" cy="90" r="74" fill="none" stroke="#16283c" stroke-width="14"/>`
+        + `<circle cx="90" cy="90" r="74" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 74}" stroke-dashoffset="${2 * Math.PI * 74 * (1 - Math.min(100, Math.max(0, fg)) / 100)}" transform="rotate(-90 90 90)"/>`
+        + `<text x="90" y="84" text-anchor="middle" font-size="38" font-weight="800" fill="${col}">${fmt(fg, 1)}</text>`
+        + `<text x="90" y="110" text-anchor="middle" font-size="14" fill="#93a4bd">恐惧贪婪指数</text></svg>`
+        + `<div class="ms-band" style="color:${col}">${esc(d.fear_greed_band || "—")}</div></div>`;
+      html += '<div class="ms-stats">';
+      const stat = (l, v) => `<div class="ov-card"><div class="ov-val">${v}</div><div class="ov-label">${l}</div></div>`;
+      html += stat("上涨家数", d.advance ?? "—");
+      html += stat("下跌家数", d.decline ?? "—");
+      html += stat("涨停", d.limit_up ?? "—");
+      html += stat("跌停", d.limit_down ?? "—");
+      html += stat("炸板", d.break ?? "—");
+      html += stat("量能热度", (d.turnover_heat ?? "—") + "");
+      html += stat("量比", d.volume_ratio != null ? fmt(d.volume_ratio, 2) : "—");
+      html += "</div></div>";
+
+      if (d.signals && d.signals.length) {
+        html += '<h3 class="ladder-h">情绪信号</h3><div class="ms-signals">';
+        d.signals.forEach(s => { html += `<div class="ms-sig ms-${s.level}"><b>【${esc(s.level)}】</b>${esc(s.text)}</div>`; });
+        html += "</div>";
+      }
+      html += `<div class="ladder-note">数据源：${d.source === "live" ? "实时" : "离线演示"} · ${d.as_of || ""} · 恐惧贪婪指数 = 50 + (上涨占比−0.5)×60</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">市场情绪加载失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  // ───────── 风险监控（融合 TradingAgents 解禁减持三条封杀线）─────────
+  async function renderRiskWatch() {
+    const panel = $("#tab-risk");
+    const ticker = ($("#rk-ticker").value || "").trim();
+    panel.innerHTML = '<div class="loading-title">正在扫描风险…</div>';
+    try {
+      const url = ticker ? `${api}/api/risk-watch?ticker=${encodeURIComponent(ticker)}` : `${api}/api/risk-watch`;
+      const d = await (await fetch(url)).json();
+      let html = "";
+      if (d.single) {
+        const s = d.single;
+        html += `<div class="rk-head">${esc(s.name || ticker)} <i>${esc(ticker)}</i> · 现价 ¥${fmt(s.price)} · PE ${fmt(s.pe)} · PB ${fmt(s.pb)}</div>`;
+        const tags = (d.risk_tags || []);
+        if (tags.length) {
+          html += '<div class="rk-tags">';
+          tags.forEach(t => { html += `<span class="rk-tag">⚠ ${esc(t)}</span>`; });
+          html += "</div>";
+        } else {
+          html += '<div class="rk-ok">✓ 未发现显著解禁 / 估值异常风险</div>';
+        }
+        const lk = s.lockup || {};
+        if (lk.has_lockup) {
+          html += '<h3 class="ladder-h">限售解禁 · 减持压力</h3><div class="rk-lockup">';
+          html += `<div class="ov-card"><div class="ov-val ${lk.pressure === "高" ? "chg-neg" : ""}">${lk.pressure}</div><div class="ov-label">解禁压力</div></div>`;
+          html += `<div class="ov-card"><div class="ov-val">${fmt(lk.unlock_yi, 1)}亿</div><div class="ov-label">解禁市值</div></div>`;
+          html += `<div class="ov-card"><div class="ov-val">${fmt(lk.unlock_ratio, 1)}%</div><div class="ov-label">占流通比</div></div>`;
+          html += `<div class="ov-card"><div class="ov-val">${lk.days_to_unlock}天</div><div class="ov-label">距解禁</div></div>`;
+          html += `</div>`;
+          const tl = lk.three_lines || {};
+          html += '<div class="rk-lines">减持新规「三条封杀线」：';
+          html += `<span class="rk-line ${tl.ipo_break ? "hit" : "ok"}">破发 ${tl.ipo_break ? "✗触发" : "✓未触发"}</span>`;
+          html += `<span class="rk-line ${tl.net_break ? "hit" : "ok"}">破净 ${tl.net_break ? "✗触发" : "✓未触发"}</span>`;
+          html += `<span class="rk-line ${tl.div_insufficient ? "hit" : "ok"}">分红不达标 ${tl.div_insufficient ? "✗触发" : "✓未触发"}</span>`;
+          html += `</div>`;
+          html += `<div class="rk-can">${esc(lk.note || "")}</div>`;
+        }
+      } else {
+        // 市场级
+        html += `<div class="ladder-note">市场级风险扫描（样本 ${d.scanned ?? 0} 只）· 离线演示</div>`;
+        const la = (d.lockup_alerts || []);
+        if (la.length) {
+          html += '<h3 class="ladder-h">解禁压力预警 TOP</h3><div class="sr-table rk-tbl"><div class="sr-th"><span>标的</span><span>解禁压力</span><span>解禁市值</span><span>占流通</span><span>距解禁</span></div>';
+          la.forEach(r => {
+            const lk = r.lockup || {};
+            html += `<div class="sr-tr"><span class="sr-name">${esc(r.name || r.ticker)} <i>${esc(r.ticker)}</i></span>`
+              + `<span class="${lk.pressure === "高" ? "chg-neg" : ""}">${lk.pressure}</span>`
+              + `<span>${fmt(lk.unlock_yi, 1)}亿</span>`
+              + `<span>${fmt(lk.unlock_ratio, 1)}%</span>`
+              + `<span>${lk.days_to_unlock}天</span></div>`;
+          });
+          html += "</div>";
+        }
+        const va = (d.valuation_alerts || []);
+        if (va.length) {
+          html += '<h3 class="ladder-h">估值异常扫描</h3><div class="rk-vals">';
+          va.forEach(r => { html += `<span class="rk-tag">${esc(r.name || r.ticker)}：${esc(r.valuation_anomaly || "")}</span>`; });
+          html += "</div>";
+        }
+      }
+      html += `<div class="ladder-note">${esc(d.note || "")} · 红涨绿跌</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">风险扫描加载失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  // ───────── 财经日历（融合 stock-master 解禁/分红/定增爬虫）─────────
+  async function renderEventCalendar() {
+    const panel = $("#tab-calendar");
+    const ticker = ($("#cal-ticker").value || "").trim();
+    const days = ($("#cal-days").value || "30");
+    panel.innerHTML = '<div class="loading-title">正在聚合财经日历…</div>';
+    try {
+      const url = ticker
+        ? `${api}/api/event-calendar?ticker=${encodeURIComponent(ticker)}&days=${days}`
+        : `${api}/api/event-calendar?days=${days}`;
+      const d = await (await fetch(url)).json();
+      let html = "";
+      if (d.ticker) html += `<div class="rk-head">${esc(d.name || d.ticker)} <i>${esc(d.ticker)}</i> · 未来 ${d.days} 日</div>`;
+      else html += `<div class="ladder-note">市场级财经日历 · 未来 ${d.days} 日 · 离线演示（样本汇总）</div>`;
+      const evs = d.events || [];
+      if (!evs.length) {
+        html += '<div class="ladder-note">未来窗口内暂无重大事件。</div>';
+      } else {
+        const cls = { "限售解禁": "ev-lock", "定增": "ev-ip", "分红派息": "ev-div", "财报披露": "ev-rep" };
+        html += '<div class="cal-list">';
+        evs.forEach(e => {
+          html += `<div class="cal-item ${cls[e.type] || "ev-other"}"><div class="cal-date">${esc(e.date)}</div>`
+            + `<div class="cal-type">${esc(e.type)}</div>`
+            + `<div class="cal-detail">${esc(e.detail || "")}</div>`
+            + `<div class="cal-impact">${esc(e.impact || "")}</div></div>`;
+        });
+        html += "</div>";
+      }
+      html += `<div class="ladder-note">${esc(d.note || "")}</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">财经日历加载失败：${esc(e.message)}</div>`;
+    }
+  }
+
   // ───────── 自选·监控（执行层：自选/计划/预警/记忆）─────────
   async function renderDesk() {
     const panel = $("#tab-desk");
@@ -1266,6 +1468,16 @@
     $("#sc-sort").addEventListener("change", () => { if (!$("#screener").hidden) renderScreener(); });
     $("#dg-refresh").addEventListener("click", () => { if (!$("#digest").hidden) renderDailyDigest(); });
     $("#bt-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#backtest").hidden) renderBacktest(); });
+    $("#cf-run").addEventListener("click", () => { if (!$("#capital").hidden) renderCapitalFlow(); });
+    $("#cf-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#capital").hidden) renderCapitalFlow(); });
+    $("#cf-refresh").addEventListener("click", () => { if (!$("#capital").hidden) renderCapitalFlow(); });
+    $("#ms-refresh").addEventListener("click", () => { if (!$("#sentiment").hidden) renderSentiment(); });
+    $("#rk-run").addEventListener("click", () => { if (!$("#risk").hidden) renderRiskWatch(); });
+    $("#rk-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#risk").hidden) renderRiskWatch(); });
+    $("#rk-refresh").addEventListener("click", () => { if (!$("#risk").hidden) renderRiskWatch(); });
+    $("#cal-refresh").addEventListener("click", () => { if (!$("#calendar").hidden) renderEventCalendar(); });
+    $("#cal-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#calendar").hidden) renderEventCalendar(); });
+    $("#cal-days").addEventListener("change", () => { if (!$("#calendar").hidden) renderEventCalendar(); });
     refreshBadge();
     // 报告头也能点回概览
     renderPipeline();

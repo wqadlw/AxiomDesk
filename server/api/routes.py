@@ -33,16 +33,20 @@ from ..llm.factory import reload_llm
 from ..providers.base import ProviderError
 from ..providers.factory import reload_provider
 from ..providers.registry import PROVIDER_META, class_for
+from ..services import capital_flow as CF
 from ..services import daily_digest as DD
+from ..services import event_calendar as EC
+from ..services import market_sentiment as MS
 from ..services import memory as MEM
 from ..services import monitor as MN
 from ..services import plan as PL
+from ..services import risk_watch as RW
 from ..services import screener as SC
 from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.3.0"
+API_VERSION = "3.4.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -511,6 +515,46 @@ def _daily_digest(date_s: str | None = Query(None, description="可选：指定�
     return {"version": API_VERSION, **DD.build_digest(date_s=date_s)}
 
 
+def _capital_flow(ticker: str = Query(..., description="标的代码，如 600519")):
+    """个股五档资金流（融合 go-stock-dev 资金流面板 + adata 五档净流入）。
+
+    返回超大/大/中/小单当日与 20 日净流入、主力净额与占流通比；demo 或网络失败回退确定性数据。
+    """
+    return {"version": API_VERSION, **CF.build_capital_flow(ticker=ticker)}
+
+
+def _capital_flow_board(
+    scope: str = Query("industry", description="板块范围：industry(行业) | concept(概念)"),
+    days: int = Query(5, description="资金窗口（仅影响种子，使窗口结果稳定）", ge=1, le=10),
+    topn: int = Query(20, description="返回条数", ge=1, le=40),
+):
+    """板块资金流榜（融合 a-stock-data 板块资金流）：行业/概念今日·5日·10日 主力净流入排行。"""
+    return {"version": API_VERSION, **CF.build_board_flow(scope=scope, days=days, topn=topn)}
+
+
+def _capital_flow_north():
+    """北向资金（融合 adata 沪深港通净买卖）：沪股通/深股通/合计 当日与 5 日净流入。"""
+    return {"version": API_VERSION, **CF.build_north_flow()}
+
+
+def _sentiment():
+    """市场情绪仪表盘（融合 aiagents-stock 恐惧贪婪指数 + 涨跌停统计 + 量能热度）。"""
+    return {"version": API_VERSION, **MS.build_sentiment()}
+
+
+def _risk_watch(ticker: str | None = Query(None, description="可选：指定标的则看个股级风险，缺省看市场级扫描")):
+    """风险监控（融合 TradingAgents 解禁减持三条封杀线 + 估值异常扫描）。"""
+    return {"version": API_VERSION, **RW.build_risk_watch(ticker=ticker)}
+
+
+def _event_calendar(
+    ticker: str | None = Query(None, description="可选：指定标的则看个股级日历，缺省看市场级汇总"),
+    days: int = Query(30, description="未来 N 日窗口", ge=1, le=120),
+):
+    """财经日历（融合 stock-master 解禁/分红/定增爬虫）：解禁/定增/分红/财报时间线。"""
+    return {"version": API_VERSION, **EC.build_event_calendar(ticker=ticker, days=days)}
+
+
 # 注册到两个路由对象
 for _rtr in (router, router_v1):
     _rtr.add_api_route("/health", _health, methods=["GET"])
@@ -558,3 +602,15 @@ for _rtr in (router, router_v1):
     _rtr.add_api_route("/screener", _screener, methods=["GET"])
     # ── 市场级：盘后速览（融合 daily_stock_analysis 收盘复盘）──
     _rtr.add_api_route("/daily-digest", _daily_digest, methods=["GET"])
+    # ── 资金面：个股五档资金流（融合 go-stock-dev 资金流面板 + adata 五档净流入）──
+    _rtr.add_api_route("/capital-flow", _capital_flow, methods=["GET"])
+    # ── 资金面：板块资金流榜（融合 a-stock-data 板块资金流）──
+    _rtr.add_api_route("/capital-flow/board", _capital_flow_board, methods=["GET"])
+    # ── 资金面：北向资金（融合 adata 沪深港通净买卖）──
+    _rtr.add_api_route("/capital-flow/north", _capital_flow_north, methods=["GET"])
+    # ── 情绪面：市场情绪仪表盘（融合 aiagents-stock 恐惧贪婪指数）──
+    _rtr.add_api_route("/sentiment", _sentiment, methods=["GET"])
+    # ── 风控面：风险监控（融合 TradingAgents 解禁减持三条封杀线）──
+    _rtr.add_api_route("/risk-watch", _risk_watch, methods=["GET"])
+    # ── 事件面：财经日历（融合 stock-master 解禁/分红/定增爬虫）──
+    _rtr.add_api_route("/event-calendar", _event_calendar, methods=["GET"])

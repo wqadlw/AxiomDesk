@@ -53,6 +53,11 @@
       <button class="nav-btn backtest-nav" data-tab="backtest"><span class="ni">📈</span>信号回测</button>
       <button class="nav-btn screener-nav" data-tab="screener"><span class="ni">🎯</span>选股</button>
       <button class="nav-btn digest-nav" data-tab="digest"><span class="ni">🗞</span>盘后速览</button>
+      <div class="nav-div"></div>
+      <button class="nav-btn cf-nav" data-tab="capital"><span class="ni">💱</span>资金流向</button>
+      <button class="nav-btn sent-nav" data-tab="sentiment"><span class="ni">🌡</span>市场情绪</button>
+      <button class="nav-btn risk-nav" data-tab="risk"><span class="ni">🛡</span>风险监控</button>
+      <button class="nav-btn cal-nav" data-tab="calendar"><span class="ni">📅</span>财经日历</button>
       <button class="nav-btn config-nav" data-tab="config"><span class="ni">⚙</span>接口配置</button>
     </nav>
 
@@ -209,8 +214,82 @@
       </div>
     </section>
 
+    <!-- 资金面：个股五档资金流 / 板块资金榜 / 北向资金（融合 go-stock-dev + adata + a-stock-data） -->
+    <section id="capital" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">资金流向</div>
+          <div class="rh-sub" id="cf-sub">个股五档资金流 · 板块资金榜 · 北向资金</div>
+        </div>
+        <div class="rh-right">
+          <input id="cf-ticker" class="ghost-input sm" placeholder="代码 如 600519" value="600519" />
+          <button id="cf-run" class="ghost-btn sm" title="查询个股资金流">▶ 查询</button>
+          <button id="cf-refresh" class="ghost-btn sm" title="刷新板块榜与北向">⟳ 刷新</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-capital"></div>
+      </div>
+    </section>
+
+    <!-- 情绪面：恐惧贪婪指数 / 涨跌停统计 / 量能热度（融合 aiagents-stock） -->
+    <section id="sentiment" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">市场情绪</div>
+          <div class="rh-sub" id="ms-sub">恐惧贪婪指数 · 涨跌停统计 · 量能热度</div>
+        </div>
+        <div class="rh-right">
+          <button id="ms-refresh" class="ghost-btn sm" title="重新生成情绪快照">⟳ 刷新</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-sentiment"></div>
+      </div>
+    </section>
+
+    <!-- 风控面：解禁减持三条封杀线 / 估值异常（融合 TradingAgents） -->
+    <section id="risk" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">风险监控</div>
+          <div class="rh-sub" id="rk-sub">解禁减持压力（三条封杀线）· 估值异常扫描</div>
+        </div>
+        <div class="rh-right">
+          <input id="rk-ticker" class="ghost-input sm" placeholder="代码 如 600519" value="" />
+          <button id="rk-run" class="ghost-btn sm" title="查询个股风险">▶ 个股</button>
+          <button id="rk-refresh" class="ghost-btn sm" title="市场级风险扫描">⟳ 市场扫描</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-risk"></div>
+      </div>
+    </section>
+
+    <!-- 事件面：财经日历（融合 stock-master 解禁/分红/定增爬虫） -->
+    <section id="calendar" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">财经日历</div>
+          <div class="rh-sub" id="cal-sub">解禁 · 定增 · 分红派息 · 财报披露时间线</div>
+        </div>
+        <div class="rh-right">
+          <select id="cal-days" class="ghost-input sm">
+            <option value="15">15 日</option>
+            <option value="30" selected>30 日</option>
+            <option value="60">60 日</option>
+          </select>
+          <input id="cal-ticker" class="ghost-input sm" placeholder="代码(可选)" value="" />
+          <button id="cal-refresh" class="ghost-btn sm" title="刷新财经日历">⟳ 刷新</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-calendar"></div>
+      </div>
+    </section>
+
     <footer class="app-foot">
-      <span class="af-brand">AxiomDesk <b>v3.3.0</b> · 公理级投研终端</span>
+      <span class="af-brand">AxiomDesk <b>v3.4.0</b> · 公理级投研终端</span>
       <span class="af-note">数据可能为实时行情 / 估算推导 / 离线合成；研判可由 AI 驱动。本终端仅用于研究与学习，所有结论不构成任何投资建议。</span>
     </footer>
   </main>

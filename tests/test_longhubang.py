@@ -44,6 +44,6 @@ def test_longhubang_endpoint(client, monkeypatch):
     r = client.get("/api/longhubang")
     assert r.status_code == 200
     body = r.json()
-    assert body["version"] == "3.3.0"
+    assert body["version"] == "3.4.0"
     assert body["source"] == "demo"
     assert body["rows"]

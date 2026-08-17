@@ -40,5 +40,5 @@ def test_backtest_endpoint(client, monkeypatch):
     r = client.get("/api/backtest?ticker=600519")
     assert r.status_code == 200
     body = r.json()
-    assert body["version"] == "3.3.0"
+    assert body["version"] == "3.4.0"
     assert body["available"] is True

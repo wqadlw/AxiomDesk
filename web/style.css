@@ -456,9 +456,73 @@ code { background: var(--panel-3); padding: 1px 6px; border-radius: 5px; font-si
 .hs.weak { border-color: rgba(240,73,94,.4); color: var(--down); }
 .hs.weak b { color: var(--down); }
 
+/* ── 资金流向 ── */
+.cf-head { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 2px; }
+.cf-name { font-size: 16px; font-weight: 700; color: var(--text); }
+.cf-name i { color: var(--dim); font-style: normal; font-size: 12px; margin-left: 6px; }
+.cf-verdict { font-weight: 700; font-size: 14px; }
+.cf-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 14px 0 18px; }
+.cf-table { display: flex; flex-direction: column; gap: 2px; }
+.cf-th, .cf-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; align-items: center; padding: 8px 12px; }
+.cf-th { color: var(--dim); font-size: 11.5px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.cf-row { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent-2); }
+.cf-row.cf-xl { border-left-color: #2f86e0; }
+.cf-row.cf-lg { border-left-color: #4ea8ff; }
+.cf-row.cf-md { border-left-color: #f5a623; }
+.cf-row.cf-sm { border-left-color: #93a4bd; }
+.cf-tier { color: var(--text); font-weight: 600; }
+.cf-board { display: flex; flex-direction: column; gap: 2px; }
+.cfb-row { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 10px; align-items: center; padding: 7px 12px; background: var(--panel); border: 1px solid var(--border); }
+.cfb-name { color: var(--text); font-weight: 600; }
+.cfb-src { font-size: 11px; color: var(--dim); font-weight: 400; }
+.cf-north { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 6px; }
+
+/* ── 市场情绪 ── */
+.ms-wrap { display: flex; gap: 26px; align-items: center; flex-wrap: wrap; margin: 14px 0; }
+.ms-gauge { text-align: center; }
+.ms-band { font-size: 15px; font-weight: 700; margin-top: 4px; }
+.ms-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 1; min-width: 280px; }
+.ms-signals { margin-top: 8px; }
+.ms-sig { padding: 8px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 6px; border: 1px solid var(--border); }
+.ms-bull { background: rgba(33,192,138,.1); color: #6fcf97; }
+.ms-bear { background: rgba(240,73,94,.1); color: #f0495e; }
+.ms-neu { background: rgba(245,166,35,.1); color: #f5a623; }
+.ms-warn { background: rgba(239,155,77,.1); color: #ef9b4d; }
+
+/* ── 风险监控 ── */
+.rk-head { font-size: 15px; font-weight: 700; color: var(--text); margin: 12px 0 8px; }
+.rk-head i { color: var(--dim); font-style: normal; font-size: 12px; margin-left: 6px; }
+.rk-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.rk-tag { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(240,73,94,.12); color: #f0495e; border: 1px solid rgba(240,73,94,.3); }
+.rk-ok { color: #21c08a; font-weight: 600; padding: 8px 0; }
+.rk-lockup { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 6px 0; }
+.rk-lines { font-size: 13px; color: var(--text); margin: 10px 0 4px; display: flex; flex-wrap: wrap; gap: 10px; }
+.rk-line { padding: 3px 10px; border-radius: 6px; border: 1px solid; font-size: 12px; }
+.rk-line.ok { background: rgba(33,192,138,.1); border-color: rgba(33,192,138,.35); color: #6fcf97; }
+.rk-line.hit { background: rgba(240,73,94,.12); border-color: rgba(240,73,94,.35); color: #f0495e; }
+.rk-can { font-size: 12.5px; color: var(--dim); margin-bottom: 8px; }
+.rk-tbl .sr-name i { color: var(--dim); font-style: normal; font-size: 11px; margin-left: 4px; }
+.rk-vals { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── 财经日历 ── */
+.cal-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.cal-item { display: grid; grid-template-columns: 92px 84px 1fr 110px; gap: 12px; align-items: center; padding: 10px 14px; background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--dim); }
+.cal-item.ev-lock { border-left-color: #f0495e; }
+.cal-item.ev-ip { border-left-color: #ef9b4d; }
+.cal-item.ev-div { border-left-color: #21c08a; }
+.cal-item.ev-rep { border-left-color: #4ea8ff; }
+.cal-date { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; color: var(--dim); }
+.cal-type { font-weight: 700; color: var(--text); }
+.cal-detail { color: var(--text); font-size: 13px; }
+.cal-impact { font-size: 12px; color: var(--dim); text-align: right; }
+
 @media (max-width: 640px) {
   .sr-th, .sr-tr { grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr; font-size: 11.5px; }
   .lh-row { grid-template-columns: 1.2fr 0.6fr 1fr 0.8fr 1.8fr; }
   .sc-th, .sc-tr { grid-template-columns: 0.4fr 1.4fr 1fr 0.8fr 0.6fr 0.8fr 1.6fr; font-size: 11px; }
+  .cf-overview, .cf-north, .rk-lockup, .ms-stats { grid-template-columns: repeat(2, 1fr); }
+  .ms-wrap { flex-direction: column; }
+  .cal-item { grid-template-columns: 78px 68px 1fr; }
+  .cal-impact { grid-column: 1 / -1; text-align: left; }
 }
 
