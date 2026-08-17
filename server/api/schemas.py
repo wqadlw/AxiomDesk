@@ -31,6 +31,7 @@ class AnalyzeResponse(BaseModel):
     panel: list[dict[str, Any]] = Field(default_factory=list)
     trap: dict[str, Any] = Field(default_factory=dict)
     great_divide: dict[str, Any] = Field(default_factory=dict)
+    strategy: dict[str, Any] = Field(default_factory=dict, description="策略图谱：各技术/量化策略适配度与推荐风格")
     depth: str = "deep"
 
     model_config = {"extra": "allow"}

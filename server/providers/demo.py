@@ -1153,10 +1153,28 @@ class DemoDataProvider(DataProvider):
     def get_profile(self, ticker: str) -> dict:
         ticker = (ticker or "").strip().upper()
         if not ticker:
-            return _synthetic("UNKNOWN")
-        if ticker in DEMO:
-            return dict(DEMO[ticker])
-        return _synthetic(ticker)
+            base = _synthetic("UNKNOWN")
+        elif ticker in DEMO:
+            base = dict(DEMO[ticker])
+        else:
+            base = _synthetic(ticker)
+        return self._enrich_market_signals(base)
+
+    @staticmethod
+    def _enrich_market_signals(p: dict) -> dict:
+        """离线确定性合成资金流/龙虎榜信号（demo 模式也让这两个维度有真实感）。
+
+        用动量/市值/上榜次数做确定性推导，保证离线体验一致且可单测。
+        """
+        m = float(p.get("momentum", 0.0) or 0.0)
+        mcap = float(p.get("mcap_yi", 0.0) or 0.0)
+        main = round(mcap * (0.002 + max(m, 0) * 0.02) * (1 if m >= 0 else -1), 2)
+        p["main_net_inflow_yi"] = main
+        p["main_inflow_days"] = int(max(0, min(30, round(15 + m * 60))))
+        p["sb_net_inflow_yi"] = round(main * 0.6, 2)
+        p["lhb_net_inflow_yi"] = round((p.get("lhb_count", 0) or 0) * abs(main) * 0.3, 2)
+        p["lhb_active_youzi"] = int((p.get("lhb_count", 0) or 0) * 2)
+        return p
 
     def get_peers(self, ticker: str, p: dict, n: int = 5) -> list[dict]:
         r = _seed(ticker + "_peers")

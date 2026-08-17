@@ -58,7 +58,8 @@ _SYSTEM_PROMPT = """你是一位**首席股票分析师**，正在使用一套�
   "great_divide": {
     "punchline": "≥10字金句，引数字、有冲突感",
     "bull_say_rounds": ["多方的第1轮(引数字)", "第2轮", "第3轮"],
-    "bear_say_rounds": ["空方的第1轮(引数字)", "第2轮", "第3轮"]
+    "bear_say_rounds": ["空方的第1轮(引数字)", "第2轮", "第3轮"],
+    "risk_say_rounds": ["风险视角的第1轮(引数字)", "第2轮", "第3轮"]
   },
   "core_conclusion": "≥20字综合定论，用'但是'结构",
   "risks": ["风险1(具体)", "风险2(具体)", "风险3(具体)"],
@@ -90,6 +91,11 @@ def _features_from_meta(meta: dict) -> dict:
         "is_new_energy": meta.get("is_new_energy"),
         "is_hot_theme": meta.get("is_hot_theme"),
         "lhb_count": meta.get("lhb_count", 0),
+        "main_net_inflow_yi": meta.get("main_net_inflow_yi", 0),
+        "main_inflow_days": meta.get("main_inflow_days", 0),
+        "sb_net_inflow_yi": meta.get("sb_net_inflow_yi", 0),
+        "lhb_net_inflow_yi": meta.get("lhb_net_inflow_yi", 0),
+        "lhb_active_youzi": meta.get("lhb_active_youzi", 0),
         "sentiment": meta.get("sentiment", 5),
         "institutional_ratio": meta.get("institutional_ratio", 40),
         "name": meta.get("name"),
@@ -126,6 +132,18 @@ def _compact_context(result: dict) -> str:
             round((meta.get("debt_ratio") or 0) * 100, 1),
             meta.get("momentum", 0),
         )
+    )
+    lines.append(
+        "【资金面】主力近30日净流入%.1f亿、净流入%d天、超大单%.1f亿"
+        % (
+            meta.get("main_net_inflow_yi", 0) or 0,
+            meta.get("main_inflow_days", 0) or 0,
+            meta.get("sb_net_inflow_yi", 0) or 0,
+        )
+    )
+    lines.append(
+        "【龙虎榜】上榜%d次、席位净额%.1f亿、活跃游资%d家"
+        % (meta.get("lhb_count", 0) or 0, meta.get("lhb_net_inflow_yi", 0) or 0, meta.get("lhb_active_youzi", 0) or 0)
     )
     lines.append("【综合】评分 %s/10 · 结论「%s」" % (result.get("overall_score", "?"), result.get("verdict", "?")))
 
@@ -188,6 +206,16 @@ def _compact_context(result: dict) -> str:
 
     gd = result.get("great_divide", {}) or {}
     lines.append("【多空分歧骨架】%s" % gd.get("punchline", ""))
+    gd_risk = gd.get("risk_say_rounds")
+    if gd_risk:
+        lines.append("【风险视角】" + " / ".join(str(x) for x in gd_risk[:2]))
+
+    strat = result.get("strategy") or {}
+    if strat:
+        lines.append(
+            "【策略图谱】推荐风格 %s(适配度%s/10)"
+            % (strat.get("recommended", "?"), strat.get("recommended_score", "?"))
+        )
 
     # ── 评委声纹发言（第一人称、带数字、带各自方法论）──
     features = _features_from_meta(meta)
@@ -279,6 +307,9 @@ def _persona_enriched_template(result: dict) -> dict:
             f"{r['name']}：{r.get('comment', '')}",
             f"{r['name']}（{r.get('group_name', '')}）：我给 {r['score']}/10，逻辑有我无法接受的漏洞。",
         ]
+        risk_rounds = result.get("great_divide", {}).get("risk_say_rounds")
+        if risk_rounds:
+            tpl["great_divide"]["risk_say_rounds"] = list(risk_rounds[:3])
         tpl["great_divide"]["punchline"] = (
             f"{b['name']}（{b.get('group_name', '')}）与 {r['name']}（{r.get('group_name', '')}）正面对垒："
             f"前者看 {b['score']}/10，后者看 {r['score']}/10。"

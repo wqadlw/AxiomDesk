@@ -70,6 +70,11 @@ def derive_features(p: dict) -> dict:
         "institutional_ratio": p.get("instr_ratio", 40),
         "sentiment": p.get("sentiment", 5),
         "lhb_count": p.get("lhb_count", 0),
+        "main_net_inflow_yi": p.get("main_net_inflow_yi"),
+        "main_inflow_days": p.get("main_inflow_days"),
+        "sb_net_inflow_yi": p.get("sb_net_inflow_yi"),
+        "lhb_net_inflow_yi": p.get("lhb_net_inflow_yi"),
+        "lhb_active_youzi": p.get("lhb_active_youzi"),
     }
     # 派生标记
     mc = p["mcap_yi"]
@@ -119,9 +124,16 @@ def derive_features(p: dict) -> dict:
         _fund = "estimated"  # 行情实时，但财报缺失 → 由 PE/PB 估算
     else:
         _fund = "demo"  # 离线合成
+    # 资金流 / 龙虎榜：真实源（akshare 实时）才标记 live，否则 demo 级
+    _real_flow = (p.get("main_net_inflow_yi") not in (0, None)) or (p.get("main_inflow_days") not in (0, None))
+    _real_lhb = (p.get("lhb_count") not in (0, None)) or (p.get("lhb_net_inflow_yi") not in (0, None))
+    _flow = "live" if (_quote_live and _real_flow) else ("estimated" if _quote_live else "demo")
+    _lhb = "live" if (_quote_live and _real_lhb) else ("estimated" if _quote_live else "demo")
     f["data_quality"] = {
         "quote": "live" if _quote_live else "demo",
         "fundamentals": _fund,
         "estimated": _fund == "estimated",
+        "capital_flow": _flow,
+        "lhb": _lhb,
     }
     return f

@@ -10,6 +10,7 @@ from ..providers.base import derive_features
 from . import data_provider as DP
 from . import investors as INV
 from . import narrative as NAR
+from . import strategy as STRAT
 from . import valuation as VAL
 
 
@@ -245,12 +246,30 @@ def great_divide(results: list[dict], features: dict, val: dict, trap: dict) -> 
         },
     ]
 
+    risk_arg = {
+        "估值": f"综合公允价相对现价 {upside:+.0%}，下行保护薄弱" if upside < 0 else "估值不便宜，安全边际有限",
+        "成长": f"营收增速 {features.get('revenue_growth', 0):.0f}%，但负债率 {features.get('debt_ratio', 0) * 100:.0f}%、现金流质量待验证",
+        "风险": f"陷阱评级 {trap['trap_level']}，{'高度疑似杀猪盘，必须回避' if trap['trap_score'] <= 3 else '需警惕动量反转与流动性风险'}",
+    }
+    risk_say_rounds = [
+        f"风险视角：{risk_arg['估值']}。",
+        f"风险视角：{risk_arg['成长']}。",
+        f"风险视角：{risk_arg['风险']}。",
+    ]
+
     punch = (
         f"多方代表 {bull['name']}（{bull['group_name']}）与空方代表 {bear['name']}（{bear['group_name']}）"
         f"在「{'估值' if abs(upside) >= 0.1 else '成长确定性'}」上分歧最大。"
         f"综合公允价相对现价 {upside:+.0%}，陷阱评级 {trap['trap_level']}。"
     )
-    return {"bull": bull["name"], "bear": bear["name"], "punchline": punch, "rounds": rounds}
+    return {
+        "bull": bull["name"],
+        "bear": bear["name"],
+        "risk": bear["name"],
+        "punchline": punch,
+        "rounds": rounds,
+        "risk_say_rounds": risk_say_rounds,
+    }
 
 
 # ───────────────────────── 总入口 ─────────────────────────
@@ -270,6 +289,7 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
 
     trap = trap_detect(features, keyword_boost)
     divide = great_divide(results, features, val, trap)
+    strategy = STRAT.build_strategy_map(features)
 
     meta = {
         "ticker": ticker,
@@ -301,6 +321,11 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
         "institutional_ratio": profile.get("instr_ratio"),
         "sentiment": profile.get("sentiment"),
         "lhb_count": profile.get("lhb_count"),
+        "main_net_inflow_yi": profile.get("main_net_inflow_yi"),
+        "main_inflow_days": profile.get("main_inflow_days"),
+        "sb_net_inflow_yi": profile.get("sb_net_inflow_yi"),
+        "lhb_net_inflow_yi": profile.get("lhb_net_inflow_yi"),
+        "lhb_active_youzi": profile.get("lhb_active_youzi"),
         "is_small_cap": features.get("is_small_cap"),
         "is_large_cap": features.get("is_large_cap"),
         "is_financial": features.get("is_financial"),
@@ -345,6 +370,7 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
         "panel": results,
         "trap": trap,
         "great_divide": divide,
+        "strategy": strategy,
         "depth": depth,
         "data_note": data_note,
         "data_disclaimer": data_disclaimer,

@@ -144,11 +144,85 @@ class AkShareDataProvider(DataProvider):
                         if k in cur:
                             profile[k] = cur[k]
                 profile["source"] = "akshare 实时行情 + 内置近似基本面兜底"
+            self._enrich_market_signals(code, profile)
+            self._enrich_fundamentals(code, profile)
             return profile
         except ProviderError:
             raise
         except Exception as e:  # pragma: no cover - 网络/接口易变
             raise ProviderError(f"akshare 抓取失败: {e}")
+
+    def _enrich_market_signals(self, code: str, profile: dict) -> None:
+        """喂入真实资金流/龙虎榜（akshare 免费东方财富接口）。
+
+        区别于 aiagents-stock 依赖付费 ws4.cn API，这里用 akshare 的免费源；
+        任何抓取失败都静默跳过，字段保持 0（由 derive_features 标记为 demo 级）。
+        """
+        try:
+            import akshare as ak
+        except Exception:
+            return
+        market = "bj" if code.startswith(("8", "4")) else ("sh" if code.startswith(("60", "688")) else "sz")
+        # ── 主力资金流向 ──
+        try:
+            ff = ak.stock_individual_fund_flow(stock=code, market=market)
+            rows = ff.to_dict("records") if hasattr(ff, "to_dict") else (ff or [])
+            if rows:
+                main = [_to_float(r.get("主力净流入-净额")) for r in rows]
+                sb = [_to_float(r.get("超大单净流入-净额")) for r in rows]
+                main_valid = [m for m in main if m != 0]
+                if main_valid:
+                    profile["main_net_inflow_yi"] = round(sum(main_valid) / 1e8, 2)
+                    profile["main_inflow_days"] = sum(1 for m in main_valid if m > 0)
+                    profile["sb_net_inflow_yi"] = round(sum(sb) / 1e8, 2)
+        except Exception:
+            pass
+        # ── 龙虎榜（个股统计）──
+        try:
+            lhb = ak.stock_lhb_stock_statistic_em(symbol=f"{market.upper()}{code}")
+            rows = lhb.to_dict("records") if hasattr(lhb, "to_dict") else (lhb or [])
+            if rows:
+                r = rows[0]
+                _cnt = _to_float(r.get("上榜次数"))
+                _net = _to_float(r.get("净额"))
+                profile["lhb_count"] = int(_cnt) if _cnt else profile.get("lhb_count", 0)
+                profile["lhb_net_inflow_yi"] = round(_net / 1e8, 2)
+                profile["lhb_active_youzi"] = int(_to_float(r.get("买入席位数")) or 0)
+        except Exception:
+            pass
+
+    def _enrich_fundamentals(self, code: str, profile: dict) -> None:
+        """用 akshare 财务摘要补齐真实营收/净利/增速（替代纯 PE/PB 估算）。
+
+        仅覆盖利润表核心字段；ROE 已由 get_profile 内建逻辑处理。任何失败静默跳过。
+        """
+        try:
+            import akshare as ak
+        except Exception:
+            return
+        try:
+            fa = ak.stock_financial_abstract(symbol=code)
+            rows = fa.to_dict("records") if hasattr(fa, "to_dict") else (fa or [])
+            if not rows:
+                return
+            periods = [str(r.get("报告期", "")) for r in rows]
+            latest = max(periods) if any(periods) else ""
+            cur = [r for r in rows if str(r.get("报告期", "")) == latest] if latest else rows
+            m: dict[str, float] = {}
+            for r in cur:
+                m[str(r.get("指标", ""))] = _to_float(r.get("value"))
+            rev = m.get("营业收入") or m.get("营业总收入")
+            if rev:
+                profile["revenue_yi"] = round(rev / 1e8, 2)
+            np_ = m.get("净利润")
+            if np_ is not None and profile.get("revenue_yi"):
+                profile["net_margin"] = round((np_ / 1e8) / profile["revenue_yi"] * 100, 2)
+            for key in ("营业收入同比增长", "营业收入同比增长率"):
+                if key in m:
+                    profile["rev_growth"] = m[key]
+                    break
+        except Exception:
+            pass
 
     def get_peers(self, ticker: str, profile: dict, n: int = 5) -> list[dict]:
         # 实时同行可比暂由 demo fallback 补全（避免引入过多易变接口）

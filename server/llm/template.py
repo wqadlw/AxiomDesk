@@ -89,6 +89,9 @@ class TemplateProvider(LLMProvider):
         bear_say_rounds = [f"{bear_name}：{r.get('bear', '')}" for r in rounds[:3]] or [
             f"{bear_name}：成长确定性与估值安全边际仍是最大未知数。"
         ]
+        risk_say_rounds = gd.get("risk_say_rounds") or [
+            "风险视角：下行保护薄弱，需警惕动量反转与流动性风险。",
+        ]
 
         core_conclusion = (
             f"{meta.get('name', '标的')}（{meta.get('ticker', '')}）综合评分 {overall}/10，结论「{verdict}」；"
@@ -135,6 +138,7 @@ class TemplateProvider(LLMProvider):
                 "punchline": punchline,
                 "bull_say_rounds": bull_say_rounds,
                 "bear_say_rounds": bear_say_rounds,
+                "risk_say_rounds": risk_say_rounds,
             },
             "core_conclusion": core_conclusion,
             "risks": risks,

@@ -70,6 +70,10 @@ def _lens_line(features: dict, dim_key: str) -> str:
         fin = "金融类高杠杆属常态" if features.get("is_financial") else "非金融行业"
         return f"负债率 {dr:.0f}%，{fin}"
     if dim_key == "12_capital_flow":
+        main = _f(features, "main_net_inflow_yi")
+        days = _f(features, "main_inflow_days")
+        if main or days:
+            return f"主力近30日净流入 {main:.1f}亿、净流入{days:.0f}天"
         m, ir = _f(features, "momentum"), _f(features, "institutional_ratio")
         return f"资金动量 {m:+.0%}、机构持仓 {ir:.0f}%"
     if dim_key == "13_policy":
@@ -83,10 +87,17 @@ def _lens_line(features: dict, dim_key: str) -> str:
         return f"护城河评分 {_f(features, 'moat'):.1f}/10"
     if dim_key == "15_events":
         lhb = features.get("lhb_count") or 0
+        net = _f(features, "lhb_net_inflow_yi")
         hot = "处于热点题材" if features.get("is_hot_theme") else "无明确催化"
+        if lhb or net:
+            return f"龙虎榜上榜 {lhb} 次、席位净额 {net:.1f}亿、{hot}"
         return f"龙虎榜次数 {lhb}、{hot}"
     if dim_key == "16_lhb":
         lhb = features.get("lhb_count") or 0
+        net = _f(features, "lhb_net_inflow_yi")
+        youzi = _f(features, "lhb_active_youzi")
+        if lhb or net or youzi:
+            return f"龙虎榜上榜 {lhb} 次、席位净额 {net:.1f}亿、活跃游资 {youzi:.0f} 家"
         return f"龙虎榜上榜 {lhb} 次"
     if dim_key == "17_sentiment":
         return f"市场舆情 {_f(features, 'sentiment'):.1f}/10"

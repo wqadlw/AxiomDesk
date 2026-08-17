@@ -718,6 +718,13 @@ def _dim_scorers():
         return clamp(s, 2, 10)
 
     def d12(f):  # 资金流向
+        main = f.get("main_net_inflow_yi") or 0.0
+        days = f.get("main_inflow_days") or 0.0
+        sb = f.get("sb_net_inflow_yi") or 0.0
+        if main or days or sb:
+            s = 5 + clamp(main / 20, -4, 4) + clamp(days / 30 * 3, 0, 3) + clamp(sb / 10, -2, 2)
+            return clamp(s)
+        # 真实数据缺失（demo 未提供）：回退到动量 + 机构持仓基线，避免分数为 0
         return clamp(5 + f.get("momentum", 0) * 12 + (f.get("institutional_ratio", 40) - 40) * 0.03)
 
     def d13(f):  # 政策
@@ -739,7 +746,14 @@ def _dim_scorers():
         )
 
     def d16(f):  # 龙虎榜
-        return clamp(f.get("lhb_count", 0) * 1.5 + (2 if f.get("is_hot_theme") else 0))
+        lhb = f.get("lhb_count") or 0.0
+        net = f.get("lhb_net_inflow_yi") or 0.0
+        youzi = f.get("lhb_active_youzi") or 0.0
+        if lhb or net or youzi:
+            s = 4 + clamp(lhb * 0.6, 0, 3) + clamp(net / 10, -2, 3) + clamp(youzi * 0.2, 0, 2)
+            return clamp(s)
+        # 真实数据缺失：回退到热点题材基线
+        return clamp(5 + (2 if f.get("is_hot_theme") else 0))
 
     def d17(f):
         return clamp(f.get("sentiment", 5))  # 舆情
