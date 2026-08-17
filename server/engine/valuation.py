@@ -96,11 +96,11 @@ def compute_dcf(features: dict, assumptions: dict | None = None) -> dict:
         }
 
     projected_fcf, year_labels, cur = [], [], fcf0
-    for i in range(1, a["stage1_years"] + 1):
+    for i in range(1, int(a["stage1_years"]) + 1):
         cur *= 1 + a["stage1_growth"]
         projected_fcf.append(round(cur, 3))
         year_labels.append(f"Y{i}")
-    for i in range(1, a["stage2_years"] + 1):
+    for i in range(1, int(a["stage2_years"]) + 1):
         cur *= 1 + a["stage2_growth"]
         projected_fcf.append(round(cur, 3))
         year_labels.append(f"Y{a['stage1_years'] + i}")

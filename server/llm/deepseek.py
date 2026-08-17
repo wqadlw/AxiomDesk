@@ -71,7 +71,7 @@ class DeepSeekProvider(LLMProvider):
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:  # nosec B310  # 仅访问用户配置的 https API 端点
                 raw = resp.read().decode("utf-8")
         except urllib.error.HTTPError as e:
             body = ""

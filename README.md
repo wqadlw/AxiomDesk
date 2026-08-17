@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org)
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue.svg)](.github/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-%3E%3D70%25-brightgreen.svg)](.github/workflows/ci.yml)
+[![Quality](https://img.shields.io/badge/quality-ruff%20%7C%20mypy%20%7C%20bandit-passing-brightgreen.svg)](.pre-commit-config.yaml)
 
 ---
 
@@ -22,20 +24,42 @@
 
 ## 🏗️ 架构
 
-```
-浏览器 (web/ 原生 JS/CSS)
-        │  REST /api, /api/v1
-        ▼
-FastAPI 应用 (server/app.py)
-   ├─ api/routes.py        版本化路由、配置接口、统一异常、CORS、Request-ID
-   ├─ engine/              确定性强引擎（评分 / 估值 / 评委 / 陷阱 / 叙事）
-   ├─ providers/           数据源抽象 + Failover + 缓存（腾讯/新浪/东财/可选包）
-   ├─ llm/                 DeepSeek / 模板 研判层（零依赖）
-   ├─ jobs.py              SQLite 异步任务 + 历史
-   └─ config_store.py      配置持久化（config.json，可热更新）
+```mermaid
+flowchart LR
+    subgraph Browser["浏览器 (web/ 原生 JS/CSS · 红涨绿跌)"]
+        UI[彭博风终端 · 9 Tab]
+    end
+    subgraph API["FastAPI 应用 (server/app.py)"]
+        R[api/routes.py<br/>版本化路由 · 统一异常 · CORS · Request-ID]
+        J[jobs.py<br/>异步任务 + SQLite 历史]
+        C[config_store.py<br/>配置持久化 · 热更新]
+    end
+    subgraph Engine["确定性分析引擎 (engine/)"]
+        E1[评分 · 20 维加权]
+        E2[估值 · DCF/Comps/LBO]
+        E3[66 评委评审团]
+        E4[8 信号杀猪盘检测]
+        E5[多空大分歧 + AI 叙事]
+    end
+    subgraph Data["数据源 (providers/ · Failover + 缓存)"]
+        P1[腾讯 / 新浪 零依赖直连]
+        P2[东方财富 / akshare / tushare（可选）]
+        P3[内置 demo 确定性兜底]
+    end
+    subgraph LLM["研判层 (llm/)"]
+        L1[DeepSeek 实时研判]
+        L2[离线模板研判（降级）]
+    end
+
+    UI -- "REST /api,/api/v1" --> R
+    R --> J & C & Engine
+    Engine --> Data
+    Engine --> LLM
+    Data -. 失败自动降级 .-> P3
+    LLM -. 无 Key 降级 .-> L2
 ```
 
-详见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 与 [docs/API.md](docs/API.md)。
+> 请求生命周期、数据契约与部署细节见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 与 [docs/API.md](docs/API.md)。
 
 ---
 
@@ -146,6 +170,24 @@ ruff format --check server/ tests/
 ```
 
 > 测试通过 `conftest.py` 在导入前设置 `UZI_DATA_SOURCE=demo` 与临时 `UZI_CONFIG`，保证确定性且不影响仓库 `config.json`。
+
+---
+
+## 🛡️ 质量保障
+
+本项目以「可开源、可协作、可长期维护」为标准，内置多层质量门禁（CI 中强制执行）：
+
+| 维度 | 工具 | 命令 | 要求 |
+|------|------|------|------|
+| 静态检查 | `ruff` (lint) | `ruff check server tests` | 0 error |
+| 格式化 | `ruff` (format) | `ruff format --check server tests` | 全绿 |
+| 类型 | `mypy` | `mypy server` | 0 error |
+| 安全 | `bandit` | `bandit -r server -c .bandit` | 0 High/Medium |
+| 测试 | `pytest` + 覆盖率 | `pytest --cov=server` | 全过，覆盖率 ≥ 70% |
+| 前端 | `node --check` | `node --check web/app.js` | 语法通过 |
+
+本地开发可一键对齐 CI：`make lint && make format && make type && make security && make test`，
+或安装 `pre-commit`（`pre-commit install`）在提交前自动跑上述检查。
 
 ---
 

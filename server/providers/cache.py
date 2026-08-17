@@ -25,7 +25,8 @@ class Cache:
             self._load()
 
     def _path(self, key: str) -> Path:
-        assert self.cache_dir is not None
+        if self.cache_dir is None:
+            raise RuntimeError("Cache 未初始化：cache_dir 为空")
         return self.cache_dir / f"{key}.json"
 
     def _load(self) -> None:

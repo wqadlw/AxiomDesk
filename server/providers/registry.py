@@ -7,6 +7,8 @@ config 页与 factory 共用此表：有哪些可配置的真实源、各自的�
 
 from __future__ import annotations
 
+from typing import Any
+
 # 默认优先级顺序（数值越小越优先）。HTTP 直连源默认开启；重型库默认关闭。
 DEFAULT_PROVIDER_ORDER = ["tencent", "sina", "eastmoney", "akshare", "efinance", "tushare", "baostock"]
 
@@ -78,7 +80,7 @@ PROVIDER_META = {
 }
 
 # 默认每个 provider 的配置模板
-DEFAULT_PROVIDER_CFG = {
+DEFAULT_PROVIDER_CFG: dict[str, dict[str, Any]] = {
     "tencent": {"enabled": True, "priority": 1, "timeout": 8, "proxy": ""},
     "sina": {"enabled": True, "priority": 2, "timeout": 8, "proxy": ""},
     "eastmoney": {"enabled": False, "priority": 3, "timeout": 8, "proxy": ""},

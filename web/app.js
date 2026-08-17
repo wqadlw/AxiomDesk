@@ -151,6 +151,11 @@
     tick();
   }
   function finishLoading() { $("#loading").hidden = true; }
+  function showEmpty() {
+    $("#empty").hidden = false;
+    $("#report").hidden = true;
+    $("#loading").hidden = true;
+  }
 
   // ───────── 主流程 ─────────
   let current = null;
@@ -171,6 +176,7 @@
     } catch (e) {
       toast("分析失败：" + e.message);
       finishLoading();
+      showEmpty();
     }
   }
   async function pollJob(jid) {
@@ -182,23 +188,10 @@
         if (j.status === "done") { current = j.result; finishLoading(); renderAll(current, j.source); return; }
         if (j.status === "error") throw new Error(j.error || "任务执行出错");
       } catch (e) {
-        toast("轮询失败：" + e.message); finishLoading(); return;
+        toast("轮询失败：" + e.message); finishLoading(); showEmpty(); return;
       }
     }
-    toast("分析超时，请重试"); finishLoading();
-  }
-
-  // 同步兜底（保留）：GET /api/analyze
-  async function runSync(ticker) {
-    const depth = $("#depth").value, boost = +$("#boost").value || 0, useAi = $("#useai").checked;
-    showLoading();
-    try {
-      const u = `${api}/api/analyze?ticker=${encodeURIComponent(ticker)}&depth=${depth}&boost=${boost}&use_ai=${useAi}`;
-      const r = await fetch(u);
-      const data = await r.json();
-      if (data.error) throw new Error(data.error);
-      current = data; finishLoading(); renderAll(current, data.llm_source);
-    } catch (e) { toast("分析失败：" + e.message); finishLoading(); }
+    toast("分析超时，请重试"); finishLoading(); showEmpty();
   }
 
   // ───────── 渲染总入口 ─────────
@@ -283,7 +276,7 @@
     panel.appendChild(strip);
 
     // 核心结论
-    const cc = (ai.core_conclusion || "").replace(/但是/g, '<span class="but">但是</span>');
+    const cc = esc(ai.core_conclusion || "").replace(/但是/g, '<span class="but">但是</span>');
     panel.appendChild(el("div", { class: "conclusion" }, [
       el("div", { class: "c-label", text: "AI 综合研判 · 核心结论（判断靠 AI）" }),
       el("div", { class: "c-body", html: cc || "—" }),

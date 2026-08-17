@@ -2,30 +2,34 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   quality:
+    name: Lint / Format / Type / Security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install lint/type tooling
+      - name: Install quality tooling
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy
+          pip install ruff mypy bandit
       - name: Ruff lint
         run: ruff check server tests
       - name: Ruff format check
         run: ruff format --check server tests
-      - name: Mypy type check (non-blocking on missing optional libs)
-        run: mypy server || true
+      - name: Mypy type check
+        run: mypy server
+      - name: Bandit security scan
+        run: bandit -r server -c .bandit -q
 
   test:
+    name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -33,19 +37,21 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install project (editable)
+      - name: Install project (editable, with dev deps)
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest httpx
-      - name: Run tests (offline demo mode)
-        run: pytest -q
+          pip install -e ".[dev]"
+      - name: Run tests with coverage
+        run: pytest --cov=server --cov-report=term-missing
+      - name: Coverage gate (>=70%)
+        run: |
+          pytest --cov=server --cov-report= | tail -1 | awk -F'|' '/TOTAL/{gsub(/ /,"",$4); if ($4+0 < 70) {print "Coverage too low:", $4"%"; exit 1}}'
 
   frontend:
+    name: Frontend syntax check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

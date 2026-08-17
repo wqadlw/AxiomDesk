@@ -39,7 +39,9 @@ class TencentDataProvider(DataProvider):
         txt = http_get(url, timeout=self.timeout, proxy=self.proxy, encoding="gbk")
         if "=" not in txt:
             raise ProviderError("腾讯行情返回异常")
-        body = txt.split("=", 1)[1].strip().strip('"').strip(";")
+        # 腾讯返回形如 v_sh600519="1~...~9.8"; 需剥掉外层引号和结尾分号。
+        # 注意顺序：先剥前引号与尾分号，再补剥一次尾引号，否则最后一个字段会残留 " 导致解析为 0。
+        body = txt.split("=", 1)[1].strip().strip('"').rstrip(";").strip('"')
         f = body.split("~")
         if len(f) < 47 or not f[3]:
             raise ProviderError("腾讯行情字段不足或为空")

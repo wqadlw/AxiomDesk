@@ -6,12 +6,8 @@
 
 from __future__ import annotations
 
-try:  # 作为 server 包的一部分导入
-    from ..providers.base import derive_features
-    from ..providers.factory import get_provider, reload_provider
-except ImportError:  # 作为脚本运行
-    from providers.base import derive_features
-    from providers.factory import get_provider, reload_provider
+from ..providers.base import derive_features
+from ..providers.factory import get_provider, reload_provider
 
 __all__ = ["derive_features", "get_peers", "get_profile", "refresh"]
 

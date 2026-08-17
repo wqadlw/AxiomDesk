@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import urllib.error
 import urllib.request
+from typing import Any
 
 from .base import ProviderError
 
@@ -35,13 +36,13 @@ def http_get(
 
         handlers.append(ProxyHandler({"http": proxy, "https": proxy}))
 
-    opener = urllib.request.build_opener(*handlers) if handlers else urllib.request.urlopen
+    opener: Any = urllib.request.build_opener(*handlers) if handlers else urllib.request.urlopen
     req = urllib.request.Request(url, headers=hdrs)
     try:
         if handlers:
             resp = opener.open(req, timeout=timeout)
         else:
-            resp = urllib.request.urlopen(req, timeout=timeout)
+            resp = urllib.request.urlopen(req, timeout=timeout)  # nosec B310  # 仅访问固定 https 行情端点
         raw = resp.read()
     except urllib.error.URLError as e:
         raise ProviderError(f"网络请求失败: {e.reason if hasattr(e, 'reason') else e}")

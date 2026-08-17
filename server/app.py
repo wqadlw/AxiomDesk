@@ -29,12 +29,35 @@ except ImportError:  # 作为脚本直接运行（python server/app.py）
     from server.config import settings  # type: ignore
     from server.logging_setup import get_logger, setup_logging  # type: ignore
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-WEB_DIR = Path(__file__).parent.parent / "web"
+
+def _resolve_web_dir() -> Path:
+    """定位前端 web 目录。
+
+    兼容多种部署形态：
+      - 开发态：源码 server/ 与 web/ 同级（Path(__file__).parent.parent / "web"）
+      - 安装态：server 被装进 site-packages（WEB_DIR 落在包外），需回退到工作目录 /app/web
+      - 容器态：WORKDIR=/app 且 web 拷贝到 /app/web
+      - 环境变量 UZI_WEB_DIR 可强制指定
+    """
+    candidates = []
+    if env_web := os.environ.get("UZI_WEB_DIR"):
+        candidates.append(Path(env_web))
+    candidates.append(Path(__file__).parent.parent / "web")  # 开发态
+    candidates.append(Path.cwd() / "web")  # 当前工作目录
+    candidates.append(Path("/app/web"))  # 容器默认
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[1]  # 回退到开发态路径（即便不存在也给出确定值）
+
+
+WEB_DIR = _resolve_web_dir()
 
 
 @asynccontextmanager

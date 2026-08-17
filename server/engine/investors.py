@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from . import personas
 
 # ═══════════════════════════════════════════════════════════════
@@ -580,7 +582,7 @@ GROUP_NAME = {g["id"]: g["name"] for g in GROUPS}
 # ═══════════════════════════════════════════════════════════════
 # 游资射程规则（源：seat_db.py fit_rules，单位 亿元）
 # ═══════════════════════════════════════════════════════════════
-YOUZI_RANGE = {
+YOUZI_RANGE: dict[str, dict[str, Any]] = {
     "zhang_mz": {"min_mcap": 200, "trend": "up", "style_match": "trend"},
     "sun_ge": {"min_mcap": 100, "is_sector_leader": True},
     "zhao_lg": {"is_first_or_second_board": True, "is_sector_leader": True},

@@ -12,11 +12,12 @@ from __future__ import annotations
 
 import hashlib
 import random
+from typing import Any
 
 from .base import DataProvider
 
 # 内置真实个股（近似基本面，截至近一年量级；单位见 unit）
-DEMO = {
+DEMO: dict[str, dict[str, Any]] = {
     # ── A 股 · 白酒/消费 ──
     "600519": dict(
         name="贵州茅台",
@@ -1091,7 +1092,7 @@ _INDUSTRIES = ["军工", "半导体", "化工", "医药", "消费", "机械", "�
 
 
 def _seed(s: str) -> random.Random:
-    h = hashlib.md5(s.encode("utf-8")).hexdigest()
+    h = hashlib.md5(s.encode("utf-8"), usedforsecurity=False).hexdigest()
     return random.Random(int(h, 16))
 
 

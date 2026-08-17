@@ -47,7 +47,9 @@ class JobStore:
         self._init_db()
 
     def _conn(self) -> sqlite3.Connection:
-        c = sqlite3.connect(str(self.db))
+        # 直接返回连接：调用方以 `with self._conn() as c:` 使用时，
+        # 连接自身的上下文管理器会在正常退出时自动 commit、关闭，保证写入落盘。
+        c = sqlite3.connect(str(self.db), check_same_thread=False)
         c.row_factory = sqlite3.Row
         return c
 
@@ -142,7 +144,7 @@ class JobStore:
         except (ValueError, TypeError):
             return None
 
-    def list(self, limit: int = 50, ticker: str | None = None) -> list[dict]:
+    def list_recent(self, limit: int = 50, ticker: str | None = None) -> list[dict]:
         with self._conn() as c:
             if ticker:
                 rows = c.execute(
@@ -156,7 +158,7 @@ class JobStore:
     def summary_rows(self, limit: int = 50, ticker: str | None = None) -> list[dict]:
         """历史列表用的精简视图（不含完整 result，省流量）。"""
         out = []
-        for r in self.list(limit=limit, ticker=ticker):
+        for r in self.list_recent(limit=limit, ticker=ticker):
             out.append(
                 {
                     "id": r["id"],

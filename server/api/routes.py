@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pydantic import BaseModel, Field
@@ -155,7 +156,7 @@ def _compare(
         raise BadRequestError("tickers 不能为空")
     if len(raw) > 5:
         raise BadRequestError("对比最多支持 5 只标的")
-    out = []
+    out: list[dict[str, Any]] = []
     for t in raw:
         try:
             r = engine.analyze(t, keyword_boost=boost, depth=depth, use_ai=True)

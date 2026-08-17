@@ -1,0 +1,31 @@
+# 不进入 Docker 构建上下文的内容
+.git
+.gitignore
+.github
+.venv
+.venv/
+.env
+.env.example
+.data
+.cache
+.coverage
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+
+# 测试与质量门禁不需要进生产镜像（pyproject.toml 必须保留，Dockerfile 依赖它安装）
+tests
+.bandit
+.pre-commit-config.yaml
+Makefile
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
+CODE_OF_CONDUCT.md
+docs
+
+# 本地编辑器 / 系统文件
+.vscode
+.idea
+.DS_Store

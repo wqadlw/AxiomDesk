@@ -6,18 +6,11 @@ analyze(ticker, keyword_boost=0, depth="deep") -> report(dict)
 
 from __future__ import annotations
 
-try:  # 作为 server 包的一部分导入（python -m server.app / tests）
-    from ..providers.base import derive_features
-    from . import data_provider as DP
-    from . import investors as INV
-    from . import narrative as NAR
-    from . import valuation as VAL
-except ImportError:  # 作为脚本运行（python server/app.py）
-    from engine import data_provider as DP
-    from engine import investors as INV
-    from engine import narrative as NAR
-    from engine import valuation as VAL
-    from providers.base import derive_features
+from ..providers.base import derive_features
+from . import data_provider as DP
+from . import investors as INV
+from . import narrative as NAR
+from . import valuation as VAL
 
 
 # ───────────────────────── 综合评分 ─────────────────────────
@@ -190,20 +183,25 @@ def trap_detect(features: dict, keyword_boost: int = 0) -> dict:
 # ───────────────────────── 多空大分歧 ─────────────────────────
 def great_divide(results: list[dict], features: dict, val: dict, trap: dict) -> dict:
     # 空分组时由同组代表兜底，避免选到不在面板里的人
+    if not results:
+        return {"bull": "—", "bear": "—", "punchline": "暂无评委结论可供多空辩论", "rounds": []}
     grp_rep = {g["id"]: g["name"] for g in INV.GROUPS}
     bulls = [r for r in results if r["signal"] == "bullish"]
     bears = [r for r in results if r["signal"] == "bearish"]
     if bulls:
-        bull = max(bulls, key=lambda r: r["score"])
+        b = max(bulls, key=lambda r: r["score"])
+        bull = {"name": b["name"], "group_name": b["group_name"]}
     else:
         # 无看多者：取综合分最高者的同组代表发言
-        top = max(results, key=lambda r: r["score"]) if results else None
-        bull = {"name": grp_rep.get(top["group"], top["name"]), "group_name": top["group_name"]} if top else None
+        top = max(results, key=lambda r: r["score"])
+        bull = {"name": grp_rep.get(top["group"], top["name"]), "group_name": top["group_name"]}
+
     if bears:
-        bear = min(bears, key=lambda r: r["score"])
+        b = min(bears, key=lambda r: r["score"])
+        bear = {"name": b["name"], "group_name": b["group_name"]}
     else:
-        bot = min(results, key=lambda r: r["score"]) if results else None
-        bear = {"name": grp_rep.get(bot["group"], bot["name"]), "group_name": bot["group_name"]} if bot else None
+        bot = min(results, key=lambda r: r["score"])
+        bear = {"name": grp_rep.get(bot["group"], bot["name"]), "group_name": bot["group_name"]}
 
     upside = 0.0
     if val.get("has_dcf") or val.get("has_comps"):
@@ -358,7 +356,8 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
             result["ai"] = NAR.generate_narrative(result)
         except Exception:
             # 理论上 generate_narrative 自身已兜底；这里再兜一层，保证结构完整
-            result["ai"] = NAR.TemplateProvider().build_template(result)
-            result["ai"]["_source"] = "template"
+            ai = NAR.TemplateProvider().build_template(result)
+            ai["_source"] = "template"
+            result["ai"] = ai
 
     return result
