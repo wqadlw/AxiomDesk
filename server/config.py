@@ -1,4 +1,4 @@
-"""集中配置 · 全部可通过环境变量 UZI_* 覆盖（见 .env.example）。
+"""集中配置 · 全部可通过环境变量 AXIOM_* 覆盖（见 .env.example）。
 
 企业级约定：
   - 12 因子配置（环境变量优先，文件兜底 .env）
@@ -13,7 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
-        env_prefix="UZI_",
+        env_prefix="AXIOM_",
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,

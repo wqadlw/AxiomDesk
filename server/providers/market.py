@@ -278,7 +278,7 @@ def _params_from_config() -> tuple[float, str]:
 def get_market_context(force_refresh: bool = False) -> dict:
     """拉取一次市场快照（TTL 缓存 60s）。失败返回确定性 demo 快照。
 
-    尊重 ``UZI_DATA_SOURCE`` / 配置：data_source 为 demo 时直接返回合成快照
+    尊重 ``AXIOM_DATA_SOURCE`` / 配置：data_source 为 demo 时直接返回合成快照
     （离线 / CI 确定性，不联网）。
     """
     try:

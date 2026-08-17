@@ -50,7 +50,6 @@ def test_validation_error_returns_422(client):
     assert client.post("/api/jobs", json={"ticker": "x", "depth": "ultra"}).status_code == 422
 
 
-
 # ───────────────────────── 自选股 watchlist ─────────────────────────
 def test_watch_add_returns_snapshot():
     snap = WL.add_watch(TICKER, cost=1300.0, stop_loss=1200.0, target=1500.0, note="底仓")
@@ -220,5 +219,5 @@ def test_api_memory_endpoints(client):
     assert client.get(f"/api/memory/{TICKER}/rounds").json()["rounds"] == []
 
 
-def test_api_version_is_300(client):
-    assert client.get("/api/health").json()["version"] == "3.0.1"
+def test_api_version_is_310(client):
+    assert client.get("/api/health").json()["version"] == "3.1.0"

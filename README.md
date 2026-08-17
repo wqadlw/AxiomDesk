@@ -23,6 +23,7 @@ flowchart TB
         A2[连板高度 / 板块资金流]
         A3[上证指数日K → RPS 基准]
         A4[TTL 缓存 + demo 确定性兜底]
+        A5[连板梯队 / 涨停异动监控]
     end
     subgraph L2["② 策略指标层 · 形态与实证"]
         B1[18 个实战信号<br/>高紧旗形 / 停机坪 / 涨停洗盘 / RPS突破…]
@@ -56,6 +57,7 @@ flowchart TB
 - **可配置数据源**：内置「数据源配置」页面，可视化启停 / 排序 / 超时 / 代理 / token，一键「测试连接」回传样本，保存即重建数据链路。
 - **方法论忠实还原**：66 位投资大师（9 大流派）× 20 维加权评分、DCF / Comps / LBO 三模型估值、8 信号杀猪盘检测、多空大分歧辩论——均源自 [UZI-Skill](https://github.com/wbh604/UZI-Skill) 的公开方法论（见 `docs/METHODOLOGY.md`）。
 - **全市场情绪快照**：涨停池 / 连板高度 / 炸板率 / 板块资金主线 / 上证指数，实时注入「情绪周期」信号与叙事层（离线自动合成，确定性可测）。
+- **连板梯队 · 涨停异动监控**：在情绪快照之上派生「连板梯队」（按连板数自高向低分层）、3 板以上高位股的「重点监控池」、涨停股行业聚合的「热点板块主线」，并自动识别连板高度 / 炸板率 / 情绪偏离的「异动信号」；前端「连板梯队」Tab 一并呈现，开盘前快速把握市场接力强度与主线方向（融合自 a-stock-data / tickflow-stock-panel）。
 - **实证策略信号**：18 个实战形态信号（含 KDJ / BOLL / RSI / CCI / OBV / 筹码分布 CYQ / RPS 相对强度），每个信号附 1/5/20 日**历史胜率回测**，标注「实证可信 / 实证偏弱」。
 - **游资专精分析**：龙虎榜席位 / 净买 / 机构 / 主力五段确定性打分（0~100），作为 AI 研判的「第二轨」校验锚点；游资派买入区间由 POC 与净买额真实计算。
 - **执行层闭环**：自选股实时盈亏 → 多情景操作计划（入场区 / 止损 / 目标 / RR / 仓位）→ 盘中 5 类事件预警（30 分钟去重），配「自选·监控」前端面板。
@@ -173,7 +175,7 @@ start.bat         # Windows 双击
 - `auto`：按「已启用 + 优先级升序」串成故障转移链（默认腾讯→新浪）。
 - `<provider_id>`：强制指定单一真实源，不可用则降级 `demo`。
 
-> 环境变量 `UZI_DATA_SOURCE` 可强制覆盖（便于容器注入 / 测试离线）。
+> 环境变量 `AXIOM_DATA_SOURCE` 可强制覆盖（便于容器注入 / 测试离线）。
 
 ### 数据溯源与基本面估算（诚实化设计）
 
@@ -208,6 +210,7 @@ start.bat         # Windows 双击
 | POST | `/api/monitor/check` | 触发一轮盘中预警检查（30 分钟去重） |
 | GET/POST/DELETE | `/api/plans` · `/api/plans/{ticker}` | 多情景操作计划：查看 / 生成 / 删除 |
 | GET/POST | `/api/memory/{ticker}` · `/summary` · `/rounds` | 跨会话记忆：召回 / 写入 / 摘要 / 轮次 |
+| GET  | `/api/limit-ladder?date_s=YYYYMMDD` | 连板梯队 / 涨停异动监控（融合 a-stock-data / tickflow-stock-panel） |
 
 完整请求 / 响应示例见 [docs/API.md](docs/API.md)。
 
@@ -224,7 +227,7 @@ ruff check server/ tests/
 ruff format --check server/ tests/
 ```
 
-> 测试通过 `conftest.py` 在导入前设置 `UZI_DATA_SOURCE=demo` 与临时 `UZI_CONFIG`，保证确定性且不影响仓库 `config.json`。
+> 测试通过 `conftest.py` 在导入前设置 `AXIOM_DATA_SOURCE=demo` 与临时 `AXIOM_CONFIG`，保证确定性且不影响仓库 `config.json`。
 
 ---
 
@@ -289,6 +292,7 @@ ruff format --check server/ tests/
 - [x] 信号胜率回测 + 策略图谱
 - [x] 自选股 / 操作计划 / 盘中预警
 - [x] 跨会话记忆 + 游资确定性评分
+- [x] 连板梯队 · 涨停异动监控（连板分层 / 重点监控池 / 热点板块 / 异动信号）
 - [ ] 财务数据真实化（接入财报接口补全营收 / 净利 / ROE 等）
 - [ ] 报告导出（PDF / Markdown）
 - [ ] 报告对比快照（同一标的跨日 diff）

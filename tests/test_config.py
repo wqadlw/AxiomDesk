@@ -48,7 +48,7 @@ def test_config_test_unknown_provider(client):
 def test_put_changes_effective_source(client):
     r = client.put("/api/config", json={"data_source": "demo"})
     assert r.status_code == 200
-    # 由于测试环境强制 UZI_DATA_SOURCE=demo（env 覆盖），effective 仍是 demo
+    # 由于测试环境强制 AXIOM_DATA_SOURCE=demo（env 覆盖），effective 仍是 demo
     assert r.json()["data_source_effective"] == "demo"
     # 复原为 auto
     client.put("/api/config", json={"data_source": "auto"})

@@ -48,6 +48,7 @@
       <button class="nav-btn" data-tab="trap"><span class="ni">🛡</span>杀猪盘检测</button>
       <button class="nav-btn" data-tab="desk"><span class="ni">★</span>自选·监控<span id="desk-badge" class="nav-badge" hidden></span></button>
       <div class="nav-div"></div>
+      <button class="nav-btn ladder-nav" data-tab="ladder"><span class="ni">⇡</span>连板梯队</button>
       <button class="nav-btn config-nav" data-tab="config"><span class="ni">⚙</span>接口配置</button>
     </nav>
 
@@ -110,8 +111,25 @@
       </div>
     </section>
 
+    <!-- 市场级：连板梯队 / 涨停异动监控（融合 a-stock-data / tickflow-stock-panel） -->
+    <section id="market" class="report" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">连板梯队 · 涨停异动监控</div>
+          <div class="rh-sub" id="ladder-sub">全市场涨停 / 连板 / 炸板实时快照</div>
+        </div>
+        <div class="rh-right">
+          <span class="rh-dataq" id="ladder-source" hidden></span>
+          <button id="ladder-refresh" class="ghost-btn sm" title="重新拉取市场快照">⟳ 刷新</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-ladder"></div>
+      </div>
+    </section>
+
     <footer class="app-foot">
-      <span class="af-brand">AxiomDesk <b>v3.0.0</b> · 公理级投研终端</span>
+      <span class="af-brand">AxiomDesk <b>v3.1.0</b> · 公理级投研终端</span>
       <span class="af-note">数据可能为实时行情 / 估算推导 / 离线合成；研判可由 AI 驱动。本终端仅用于研究与学习，所有结论不构成任何投资建议。</span>
     </footer>
   </main>

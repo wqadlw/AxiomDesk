@@ -3,6 +3,25 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.1.0] — 2026-08-17
+
+### 新功能：连板梯队 · 涨停异动监控（融合 a-stock-data / tickflow-stock-panel）
+- 新增市场级端点 `GET /api/limit-ladder`（双前缀 `/api` 与 `/api/v1` 均可用）：
+  - **连板梯队**：由涨停池按连板数自高向低分层，逐层列出成分股。
+  - **重点监控池**：3 板及以上高位股（分歧 / 退潮风险区）单独成池。
+  - **热点板块主线**：涨停股按行业聚合，给出板块涨停家数与占比。
+  - **异动信号**：自动识别连板高度（亢奋 / 偏弱）、炸板率（质量高 / 风险升）、情绪（亢奋 / 冰点）三类偏离并给出可读提示。
+- 复用 `providers.market.get_market_context` 的统一 TTL 缓存与 demo 兜底，**零新增网络依赖、永不中断、永不抛错给前端**；返回 `source` 字段标注 live / demo，前端据此标注数据性质。
+- 前端新增「连板梯队」Tab（独立市场级视图），含总览卡片、异动信号、连板梯队、热点板块、重点监控池、板块资金流六大区块，支持手动刷新。
+- 新增 `tests/test_limit_ladder.py`：覆盖双前缀、结构断言（连板数降序、监控池 ≥3 板、热点板块占比归一、炸板率范围等）。
+
+### 品牌解耦：UZI_ → AXIOM_ 环境变量前缀
+- 全局重命名真实配置环境变量前缀 `UZI_` → `AXIOM_`（20 个文件），使用负向先行断言 `(?<!YO)UZI_` 确保 **YOUZI_（游资）令牌不受影响、全部保留**。
+- `server/config.py` 的 `env_prefix` 同步改为 `"AXIOM_"`；`.env.example` 的 `AXIOM_LOG_FILE` 改为 `axiomdesk.log`。
+- `pyproject.toml`：版本 `3.0.0`→`3.1.0`；移除 `uzi-terminal` 兼容入口别名（仅保留 `axiomdesk`）；文档链接去除 "UZI-Skill" 标签。
+- `tests/conftest.py` 临时目录前缀 `uzi-test-`/`uzi-cfg-` → `axiom-test-`/`axiom-cfg-`。
+- **有意保留**（MIT 衍生事实）：`LICENSE` / `NOTICE` / `CHANGELOG` 历史记录、`docs/METHODOLOGY.md` 对 UZI-Skill 的署名、代码注释中的来源标注，以及 `YOUZI_` 游资令牌。
+
 ## [3.0.1] — 2026-08-17
 
 ### 上线级加固（架构 / 接口规范 / 前端专业度）
@@ -13,7 +32,7 @@
 
 ### 开源发布准备（品牌一致性清理）
 - 统一散落的「UZI Terminal / UZI 投研终端」文案为 **AxiomDesk**：`LICENSE` 版权名、`.env.example` / `requirements.txt` 标题、`Dockerfile` 注释与非 root 用户（`uzi`→`axiom`）、`docker-compose.yml` 服务/镜像/容器/卷名、`start.sh` / `start.bat`、`CONTRIBUTING.md` 克隆示例、`SECURITY.md` / `CODE_OF_CONDUCT.md` 安全联系邮箱、`docs/ARCHITECTURE.md` 开头。
-- 有意保留项：`CHANGELOG.md` 中的历史重命名记录、`pyproject.toml` 的 `uzi-terminal` 兼容入口别名、真实配置环境变量前缀 `UZI_*`（引擎/配置系统仍读取，未改）。
+- 有意保留项（截至 3.0.1）：`CHANGELOG.md` 中的历史重命名记录、`pyproject.toml` 的 `uzi-terminal` 兼容入口别名、真实配置环境变量前缀 `UZI_*`（引擎/配置系统仍读取，未改）。**注**：上述耦合项已在 **3.1.0** 完成解耦——`UZI_*` → `AXIOM_*` 全局重命名、`uzi-terminal` 别名移除，详见 3.1.0 条目。
 
 ### 交易逻辑边界（已审计）
 - 引擎层除零 / 空值 / AI 失败全部已有守卫：除零处均 `if base else 0.0` 等保护；`engine.analyze` 对 K 线取数、AI 叙述、记忆召回/沉淀均做 try/except 优雅降级（AI 失败回退离线模板）；计划/监控/评分模块对 `close<=0`、`risk>0`、`price` 等做了边界处理。本轮未改动引擎逻辑，仅以测试锁定契约。

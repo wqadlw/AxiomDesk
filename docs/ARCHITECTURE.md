@@ -27,7 +27,7 @@
 │   ├─ llm/                DeepSeek / 模板 研判（零依赖）        │
 │   ├─ jobs.py             SQLite 异步任务 + 历史               │
 │   ├─ config_store.py     配置持久化 (config.json, 可热更新)   │
-│   └─ config.py           pydantic-settings (UZI_ 前缀)        │
+│   └─ config.py           pydantic-settings (AXIOM_ 前缀)        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -86,9 +86,9 @@ class DataProvider:
 
 ## 配置与热更新
 
-- `config_store` 持久化到 `config.json`（路径：`UZI_CONFIG` 环境变量或项目根）。
+- `config_store` 持久化到 `config.json`（路径：`AXIOM_CONFIG` 环境变量或项目根）。
 - 修改配置（`PUT /api/config`）后调用 `reload_provider()` + `reload_llm()` 立即重建链路。
-- `UZI_DATA_SOURCE` 环境变量可强制覆盖 `data_source`（容器注入 / 测试离线关键）。
+- `AXIOM_DATA_SOURCE` 环境变量可强制覆盖 `data_source`（容器注入 / 测试离线关键）。
 
 ## 部署
 
@@ -97,7 +97,7 @@ class DataProvider:
 | 本地 | `python -m uvicorn server.app:app --port 8137` | 开发 / 演示 |
 | 脚本 | `./start.sh` / `start.bat` | 自动探测端口、后台启动、开浏览器 |
 | Docker | `docker compose up --build` | 非 root、healthcheck、数据卷持久化 |
-| 生产 | 反向代理 (nginx) + uvicorn workers | 建议 `UZI_LOG_JSON=true` 接入日志系统 |
+| 生产 | 反向代理 (nginx) + uvicorn workers | 建议 `AXIOM_LOG_JSON=true` 接入日志系统 |
 
 ## 目录结构
 

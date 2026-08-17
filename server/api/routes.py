@@ -40,7 +40,7 @@ from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.0.1"
+API_VERSION = "3.1.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -431,6 +431,16 @@ def _mem_rounds(ticker: str):
     return {"version": API_VERSION, "rounds": MEM.recent_rounds(ticker)}
 
 
+def _limit_ladder(date_s: str | None = Query(None, description="可选：指定日期 YYYYMMDD（默认当日）")):
+    """连板梯队 + 涨停异动监控（融合 a-stock-data / tickflow-stock-panel）。
+
+    由 providers.market 的统一市场快照派生，任意网络失败都回退到确定性 demo，永不中断。
+    """
+    from ..services import limit_ladder as LL
+
+    return {"version": API_VERSION, **LL.build_limit_ladder(date_s=date_s)}
+
+
 # 注册到两个路由对象
 for _rtr in (router, router_v1):
     _rtr.add_api_route("/health", _health, methods=["GET"])
@@ -466,3 +476,5 @@ for _rtr in (router, router_v1):
     _rtr.add_api_route("/memory/{ticker}/summary", _mem_summary_get, methods=["GET"])
     _rtr.add_api_route("/memory/{ticker}/summary", _mem_summary_set, methods=["POST"])
     _rtr.add_api_route("/memory/{ticker}/rounds", _mem_rounds, methods=["GET"])
+    # ── 市场级：连板梯队 / 涨停异动（融合 a-stock-data / tickflow-stock-panel）──
+    _rtr.add_api_route("/limit-ladder", _limit_ladder, methods=["GET"])

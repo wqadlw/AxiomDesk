@@ -1,7 +1,7 @@
 """运行时配置存储 · 持久化到 config.json（配置页的“后端真相来源”）。
 
 约定：
-  - 路径：环境变量 UZI_CONFIG 指定，否则项目根目录 config.json
+  - 路径：环境变量 AXIOM_CONFIG 指定，否则项目根目录 config.json
   - 与 .env / pydantic-settings 互补：本文件用「配置页」动态修改并落盘，重启后仍生效
   - 加载时与默认结构做深度合并，避免旧配置缺字段导致 KeyError
   - token 等敏感字段仅落本地文件，不会回传到任何远端
@@ -35,7 +35,7 @@ def _default_config() -> dict:
 
 
 def _config_path() -> Path:
-    env = os.environ.get("UZI_CONFIG")
+    env = os.environ.get("AXIOM_CONFIG")
     if env:
         return Path(env)
     return PROJECT_ROOT / "config.json"
@@ -172,8 +172,8 @@ def provider_status() -> list[dict]:
 
 
 def effective_data_source() -> str:
-    # 环境变量 UZI_DATA_SOURCE 可强制覆盖（便于容器注入 / 测试离线）
-    env = os.environ.get("UZI_DATA_SOURCE")
+    # 环境变量 AXIOM_DATA_SOURCE 可强制覆盖（便于容器注入 / 测试离线）
+    env = os.environ.get("AXIOM_DATA_SOURCE")
     if env:
         return env.lower()
     return get_config().get("data_source", "auto")

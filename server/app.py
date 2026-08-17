@@ -43,10 +43,10 @@ def _resolve_web_dir() -> Path:
       - 开发态：源码 server/ 与 web/ 同级（Path(__file__).parent.parent / "web"）
       - 安装态：server 被装进 site-packages（WEB_DIR 落在包外），需回退到工作目录 /app/web
       - 容器态：WORKDIR=/app 且 web 拷贝到 /app/web
-      - 环境变量 UZI_WEB_DIR 可强制指定
+      - 环境变量 AXIOM_WEB_DIR 可强制指定
     """
     candidates = []
-    if env_web := os.environ.get("UZI_WEB_DIR"):
+    if env_web := os.environ.get("AXIOM_WEB_DIR"):
         candidates.append(Path(env_web))
     candidates.append(Path(__file__).parent.parent / "web")  # 开发态
     candidates.append(Path.cwd() / "web")  # 当前工作目录

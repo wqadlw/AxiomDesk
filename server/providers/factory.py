@@ -157,7 +157,7 @@ def get_provider() -> DataProvider:
     settings = get_settings()
     demo = DemoDataProvider()
     cache = Cache(ttl=cfg.get("cache_ttl", 600) or settings.cache_ttl, cache_dir=settings.cache_dir)
-    # 优先使用 effective_data_source：尊重 UZI_DATA_SOURCE 环境变量覆盖（容器/测试场景）
+    # 优先使用 effective_data_source：尊重 AXIOM_DATA_SOURCE 环境变量覆盖（容器/测试场景）
     ds = effective_data_source().lower()
 
     if ds == "demo":

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "axiomdesk"
-version = "3.0.0"
+version = "3.1.0"
 description = "AxiomDesk · 公理级投研终端（四层研判：市场情绪 → 策略指标 → 执行计划 → 智能记忆）——66 评委 × 20 维框架 × 三模型估值 × 杀猪盘检测 × 游资确定性评分 × 盘中预警"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -43,11 +43,10 @@ dev = [
 Homepage = "https://github.com/wqadlw/AxiomDesk"
 Repository = "https://github.com/wqadlw/AxiomDesk"
 Documentation = "https://github.com/wqadlw/AxiomDesk/blob/main/README.md"
-"Methodology (UZI-Skill)" = "https://github.com/FloatFu-true/UZI-Skill"
+"Methodology" = "https://github.com/FloatFu-true/UZI-Skill"
 
 [project.scripts]
 axiomdesk = "server.app:run"
-uzi-terminal = "server.app:run"  # 兼容旧名
 
 [tool.setuptools.packages.find]
 where = ["."]

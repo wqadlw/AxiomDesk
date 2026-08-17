@@ -357,4 +357,38 @@ code { background: var(--panel-3); padding: 1px 6px; border-radius: 5px; font-si
 .mem-kind.fact { background: rgba(78,168,255,.14); color: var(--accent-2); }
 .mem-kind.view { background: rgba(245,166,35,.14); color: var(--accent); }
 .mem-kind.decision { background: rgba(33,192,138,.14); color: var(--down); }
+
+/* ───────── 连板梯队 · 涨停异动监控 ───────── */
+.ladder-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 14px 0 18px; }
+.ov-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; text-align: center; }
+.ov-val { font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.ov-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.ladder-anom { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.anom { font-size: 12.5px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); }
+.anom-warn { border-color: var(--up); color: var(--up); }
+.anom-info { border-color: var(--accent-2); color: var(--accent-2); }
+.anom-good { border-color: var(--down); color: var(--down); }
+.ladder-h { font-size: 14px; font-weight: 700; color: var(--text); margin: 18px 0 10px; padding-left: 10px; border-left: 3px solid var(--accent); }
+.ladder { display: flex; flex-direction: column; gap: 8px; }
+.ladder-row { display: flex; align-items: stretch; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.lb-board { flex: 0 0 78px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 17px; font-weight: 800; color: var(--up); border-right: 1px solid var(--border); }
+.lb-count { font-size: 12px; color: var(--muted); font-weight: 600; }
+.lb-stocks { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.lb-stock { font-size: 12.5px; background: var(--panel-3); border: 1px solid var(--border); border-radius: 7px; padding: 3px 9px; color: var(--text); }
+.lb-stock:hover { border-color: var(--accent); color: var(--accent); }
+.hot-sectors, .mon-pool { display: flex; flex-wrap: wrap; gap: 8px; }
+.hs, .mp { font-size: 12.5px; background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 5px 13px; color: var(--text); }
+.hs b { color: var(--accent); margin-left: 4px; }
+.mp { border-color: rgba(245,166,35,.4); }
+.mp i { color: var(--up); font-style: normal; margin-left: 4px; font-weight: 700; }
+.sector-flow { display: flex; flex-direction: column; gap: 6px; }
+.sf-row { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 12.5px; }
+.sf-name { color: var(--text); }
+.sf-pct { color: var(--up); font-weight: 600; }
+.sf-in { color: var(--down); font-weight: 600; }
+.ladder-note { margin-top: 18px; font-size: 11.5px; color: var(--dim); border-top: 1px dashed var(--border); padding-top: 10px; }
+.rh-dataq { font-size: 11.5px; color: var(--accent-2); }
+@media (max-width: 640px) { .ladder-overview { grid-template-columns: repeat(2, 1fr); } }
 .mem-text { color: var(--text); }

@@ -45,7 +45,7 @@ def test_provider_status_counts():
 def test_config_save_reload_roundtrip(tmp_path, monkeypatch):
     from server.config_store import get_config, invalidate, load_config, set_config
 
-    monkeypatch.setenv("UZI_CONFIG", str(tmp_path / "config.json"))
+    monkeypatch.setenv("AXIOM_CONFIG", str(tmp_path / "config.json"))
     invalidate()
     cfg = load_config()
     cfg["providers"]["tencent"]["enabled"] = False
@@ -59,7 +59,7 @@ def test_config_save_reload_roundtrip(tmp_path, monkeypatch):
 
 # ───────── failover 工厂 ─────────
 def test_factory_demo_returns_demo(monkeypatch):
-    monkeypatch.setenv("UZI_DATA_SOURCE", "demo")
+    monkeypatch.setenv("AXIOM_DATA_SOURCE", "demo")
     from server.providers.factory import get_provider, reload_provider
 
     reload_provider()
@@ -71,7 +71,7 @@ def test_factory_demo_returns_demo(monkeypatch):
 
 
 def test_factory_auto_builds_chain(monkeypatch):
-    monkeypatch.setenv("UZI_DATA_SOURCE", "auto")
+    monkeypatch.setenv("AXIOM_DATA_SOURCE", "auto")
     from server.providers.factory import get_provider, reload_provider
 
     reload_provider()
@@ -95,7 +95,7 @@ def _walk_types(p, acc=None):
 
 
 def test_factory_specific_provider(monkeypatch):
-    monkeypatch.setenv("UZI_DATA_SOURCE", "tencent")
+    monkeypatch.setenv("AXIOM_DATA_SOURCE", "tencent")
     from server.providers.factory import get_provider, reload_provider
 
     reload_provider()

@@ -1,6 +1,6 @@
 """LLM 工厂 · 单例 + 自动降级。
 
-优先级：配置了 UZI_DEEPSEEK_API_KEY → DeepSeekProvider（真实大模型推理）；
+优先级：配置了 AXIOM_DEEPSEEK_API_KEY → DeepSeekProvider（真实大模型推理）；
 否则 → TemplateProvider（离线确定性回退）。
 两个 Provider 产出同一份 schema，调用方无需关心底层是谁。
 """
@@ -29,9 +29,9 @@ def get_llm(force_reload: bool = False) -> LLMProvider:
     except Exception:
         llm_cfg = {}
     ds = DeepSeekProvider(
-        api_key=os.environ.get("UZI_DEEPSEEK_API_KEY") or llm_cfg.get("api_key", ""),
-        base_url=os.environ.get("UZI_DEEPSEEK_BASE_URL") or llm_cfg.get("base_url", ""),
-        model=os.environ.get("UZI_DEEPSEEK_MODEL") or llm_cfg.get("model", ""),
+        api_key=os.environ.get("AXIOM_DEEPSEEK_API_KEY") or llm_cfg.get("api_key", ""),
+        base_url=os.environ.get("AXIOM_DEEPSEEK_BASE_URL") or llm_cfg.get("base_url", ""),
+        model=os.environ.get("AXIOM_DEEPSEEK_MODEL") or llm_cfg.get("model", ""),
     )
     if ds.is_available():
         _LLM = ds

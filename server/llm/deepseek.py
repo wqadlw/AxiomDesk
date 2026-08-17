@@ -33,10 +33,12 @@ class DeepSeekProvider(LLMProvider):
         model: str | None = None,
         timeout: float | None = None,
     ):
-        self.api_key = (api_key or os.environ.get("UZI_DEEPSEEK_API_KEY") or "").strip()
-        self.base_url = (base_url or os.environ.get("UZI_DEEPSEEK_BASE_URL") or "https://api.deepseek.com").rstrip("/")
-        self.model = (model or os.environ.get("UZI_DEEPSEEK_MODEL") or "deepseek-chat").strip()
-        self.timeout = float(timeout if timeout is not None else os.environ.get("UZI_DEEPSEEK_TIMEOUT", "60"))
+        self.api_key = (api_key or os.environ.get("AXIOM_DEEPSEEK_API_KEY") or "").strip()
+        self.base_url = (base_url or os.environ.get("AXIOM_DEEPSEEK_BASE_URL") or "https://api.deepseek.com").rstrip(
+            "/"
+        )
+        self.model = (model or os.environ.get("AXIOM_DEEPSEEK_MODEL") or "deepseek-chat").strip()
+        self.timeout = float(timeout if timeout is not None else os.environ.get("AXIOM_DEEPSEEK_TIMEOUT", "60"))
 
     def is_available(self) -> bool:
         return bool(self.api_key)
@@ -45,7 +47,7 @@ class DeepSeekProvider(LLMProvider):
         self, system: str, user: str, *, max_tokens: int = 2000, temperature: float = 0.3, timeout: float | None = None
     ) -> str:
         if not self.api_key:
-            raise DeepSeekError("未配置 UZI_DEEPSEEK_API_KEY，无法调用 DeepSeek")
+            raise DeepSeekError("未配置 AXIOM_DEEPSEEK_API_KEY，无法调用 DeepSeek")
 
         url = f"{self.base_url}/chat/completions"
         payload = {

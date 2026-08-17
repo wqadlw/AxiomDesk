@@ -113,6 +113,12 @@
         $$("#nav .nav-btn").forEach(b => b.classList.remove("active"));
         $$(".tab-panel").forEach(p => (p.hidden = true));
         btn.classList.add("active");
+        // 市场级视图（连板梯队）独立于个股 report，单独显隐
+        const isMarket = btn.dataset.tab === "ladder";
+        $("#empty").hidden = true;
+        $("#report").hidden = true;
+        $("#market").hidden = !isMarket;
+        if (isMarket) { $("#tab-ladder").hidden = false; renderLadder(); return; }
         $("#tab-" + btn.dataset.tab).hidden = false;
         if (btn.dataset.tab === "jury") renderJury();
         if (btn.dataset.tab === "valuation") renderValuation();
@@ -514,6 +520,65 @@
     if (t.recommendation) panel.appendChild(el("div", { class: "trap-rec", html: esc(t.recommendation) }));
   }
 
+  // ───────── 连板梯队 · 涨停异动监控（融合 a-stock-data / tickflow-stock-panel）─────────
+  async function renderLadder() {
+    const panel = $("#tab-ladder");
+    panel.innerHTML = '<div class="loading-title">正在拉取全市场涨停快照…</div>';
+    try {
+      const d = await (await fetch(`${api}/api/limit-ladder`)).json();
+      const emo = d.emotion || {};
+      $("#ladder-source").hidden = false;
+      $("#ladder-source").textContent = (d.source === "live" ? "实时(东财)" : "离线演示") + (d.as_of ? " · " + d.as_of : "");
+
+      const card = (label, val) => `<div class="ov-card"><div class="ov-val">${val}</div><div class="ov-label">${label}</div></div>`;
+      let html = '<div class="ladder-overview">';
+      html += card("涨停家数", d.total_limit);
+      html += card("最高连板", d.max_boards + " 板");
+      html += card("炸板率", (d.break_rate * 100).toFixed(0) + "%");
+      html += card("市场情绪", emo.stage || "—");
+      html += "</div>";
+
+      if (d.anomalies && d.anomalies.length) {
+        html += '<div class="ladder-anom">';
+        d.anomalies.forEach(a => { html += `<div class="anom anom-${a.level}"><b>【${a.type}】</b>${esc(a.msg)}</div>`; });
+        html += "</div>";
+      }
+
+      html += '<h3 class="ladder-h">连板梯队</h3><div class="ladder">';
+      (d.ladder || []).forEach(t => {
+        const stocks = (t.stocks || []).map(s => `<span class="lb-stock" title="${(s.industry || "")}">${esc(s.name || s.code)}</span>`).join("");
+        html += `<div class="ladder-row"><div class="lb-board">${t.board}板 <span class="lb-count">${t.count}</span></div><div class="lb-stocks">${stocks}</div></div>`;
+      });
+      html += "</div>";
+
+      if (d.hot_sectors && d.hot_sectors.length) {
+        html += '<h3 class="ladder-h">热点板块（涨停分布）</h3><div class="hot-sectors">';
+        d.hot_sectors.forEach(s => { html += `<span class="hs">${esc(s.name)} <b>${s.limit_count}</b></span>`; });
+        html += "</div>";
+      }
+
+      if (d.monitor_pool && d.monitor_pool.length) {
+        html += `<h3 class="ladder-h">重点监控池（${d.monitor_count} 只 · 3板及以上）</h3><div class="mon-pool">`;
+        d.monitor_pool.forEach(s => { html += `<span class="mp">${esc(s.name || s.code)} <i>${s.boards}板</i></span>`; });
+        html += "</div>";
+      }
+
+      if (d.sector_flow && d.sector_flow.length) {
+        html += '<h3 class="ladder-h">板块资金流（主力净流入 TOP）</h3><div class="sector-flow">';
+        d.sector_flow.forEach(s => {
+          const sign = s.net_inflow_yi >= 0 ? "+" : "";
+          html += `<div class="sf-row"><span class="sf-name">${esc(s.name)}</span><span class="sf-pct">${(s.change_pct * 100).toFixed(2)}%</span><span class="sf-in">${sign}${s.net_inflow_yi.toFixed(1)}亿</span></div>`;
+        });
+        html += "</div>";
+      }
+
+      html += `<div class="ladder-note">数据源：${d.source === "live" ? "实时(东财 push2ex)" : "离线演示"} · ${d.as_of || ""}${d.source !== "live" ? " · 演示数据不代表真实行情" : ""}</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">连板数据加载失败：${esc(e.message)}</div>`;
+    }
+  }
+
   // ───────── 自选·监控（执行层：自选/计划/预警/记忆）─────────
   async function renderDesk() {
     const panel = $("#tab-desk");
@@ -697,7 +762,7 @@
   // ───────── 流水线 ─────────
   function renderPipeline() {
     const panel = $("#tab-pipeline"); panel.innerHTML = "";
-    panel.appendChild(el("div", { class: "section-title", text: "分析流水线（UZI-Skill 6 段式）" }));
+    panel.appendChild(el("div", { class: "section-title", text: "分析流水线（公理级 6 段式）" }));
     const ol = el("ol", { class: "pipeline" });
     PIPELINE.forEach((p, i) => ol.appendChild(el("li", {}, [
       el("div", { class: "step-no", text: String(i + 1) }),
@@ -881,7 +946,7 @@
       el("div", { class: "cfg-ctrl" }, [el("label", { class: "cfg-full" }, [el("span", { class: "muted", text: "API Key" }), key])]),
       el("div", { class: "cfg-ctrl" }, [el("label", { class: "cfg-full" }, [el("span", { class: "muted", text: "Base URL" }), base])]),
       el("div", { class: "cfg-ctrl" }, [el("label", { class: "cfg-full" }, [el("span", { class: "muted", text: "模型" }), model])]),
-      el("div", { class: "muted", style: "font-size:11.5px;margin-top:4px", text: "留空则自动降级为离线模板（确定性，无需联网）。环境变量 UZI_DEEPSEEK_API_KEY 可覆盖此处。" }),
+      el("div", { class: "muted", style: "font-size:11.5px;margin-top:4px", text: "留空则自动降级为离线模板（确定性，无需联网）。环境变量 AXIOM_DEEPSEEK_API_KEY 可覆盖此处。" }),
     ]));
 
     // 操作
@@ -954,6 +1019,7 @@
     $("#compare-close").addEventListener("click", closeDrawers);
     $("#cmp-run").addEventListener("click", runCompare);
     $("#btn-addwatch").addEventListener("click", addWatchCurrent);
+    $("#ladder-refresh").addEventListener("click", () => { if (!$("#market").hidden) renderLadder(); });
     refreshBadge();
     // 报告头也能点回概览
     renderPipeline();

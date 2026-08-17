@@ -172,7 +172,7 @@ signal = override_signal if rc["override_signal"] else (
 ```
 
 **Skip 路径**（signal="skip", score=-1）：
-1. `--school` 锁定单流派（`UZI_SCHOOL` 环境变量，大写单字母 A–I）：非该组评委全部 skip（含 group=="" 者）。
+1. `--school` 锁定单流派（`AXIOM_SCHOOL` 环境变量，大写单字母 A–I）：非该组评委全部 skip（含 group=="" 者）。
 2. Layer 1 reality_check `should_evaluate == False`。
 3. F 组游资射程前置：`_is_youzi_out_of_range` → 市值超 `seat_db.is_in_range` 返回 `True` 即 skip。
    - **反查覆盖（v3.4.5）**：若 `features["matched_youzi"]` 含该游资（30 天内龙虎榜实际出现），即使超射程也**强制参与评分**，不 skip。
@@ -593,7 +593,7 @@ def is_available(self) -> bool                  # 环境变量/依赖/网络检�
 ```
 get_provider_chain(dim, market="A") -> list[Provider]
     默认顺序: ["akshare", "efinance", "tushare", "baostock"]
-    覆盖: 环境变量 UZI_PROVIDERS_<DIM> (逗号分隔 id，如 UZI_PROVIDERS_FINANCIALS=tushare,akshare)
+    覆盖: 环境变量 AXIOM_PROVIDERS_<DIM> (逗号分隔 id，如 AXIOM_PROVIDERS_FINANCIALS=tushare,akshare)
     过滤: 仅保留 market in p.markets 且 p.is_available() 的 provider
 
 try_chain(method, dim, market="A", *args, **kwargs) -> (data, provider_name)
@@ -606,7 +606,7 @@ try_chain(method, dim, market="A", *args, **kwargs) -> (data, provider_name)
 ```
 
 - 错误类型：`ProviderError`（统一，便于 failover）。
-- 环境变量：`TUSHARE_TOKEN`（tushare）、`UZI_PROVIDERS_<DIM>`（单维度覆盖偏好）。
+- 环境变量：`TUSHARE_TOKEN`（tushare）、`AXIOM_PROVIDERS_<DIM>`（单维度覆盖偏好）。
 - `health_check()` 返回每个 provider 的 `{available, markets, requires_key, status}`。
 - 设计目的：主源 akshare 挂了不空返；有可选 key 时自动启用更稳定源；下游 fetcher 不关心具体来源。
 
