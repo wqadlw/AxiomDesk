@@ -37,10 +37,10 @@ from ..services import memory as MEM
 from ..services import monitor as MN
 from ..services import plan as PL
 from ..services import watchlist as WL
-from .errors import BadRequestError
+from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.0.0"
+API_VERSION = "3.0.1"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -126,7 +126,7 @@ def _get_job(job_id: str):
     store = get_store()
     row = store.get(job_id)
     if not row:
-        raise BadRequestError(f"任务不存在：{job_id}")
+        raise NotFoundError(f"任务不存在：{job_id}")
     out = {
         "job_id": row["id"],
         "ticker": row["ticker"],
@@ -336,7 +336,7 @@ def _watch_add(body: WatchAdd):
 def _watch_get(ticker: str):
     row = WL.get_store().watchlist_get(ticker)
     if not row:
-        raise BadRequestError(f"自选不存在：{ticker}")
+        raise NotFoundError(f"自选不存在：{ticker}")
     return {"version": API_VERSION, "item": WL.snapshot_one(ticker, cached=row)}
 
 
@@ -377,7 +377,7 @@ def _plan_list():
 def _plan_get(ticker: str):
     p = PL.get_plan(ticker)
     if not p:
-        raise BadRequestError(f"暂无操作计划：{ticker}（可 POST /api/plans/{ticker} 生成）")
+        raise NotFoundError(f"暂无操作计划：{ticker}（可 POST /api/plans/{ticker} 生成）")
     return {"version": API_VERSION, "plan": p}
 
 

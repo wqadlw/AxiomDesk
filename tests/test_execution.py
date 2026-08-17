@@ -33,6 +33,24 @@ def _clean_desk():
         c.execute("DELETE FROM plans")
 
 
+# ───────────────────────── 接口规范化：状态码 ─────────────────────────
+def test_not_found_returns_404(client):
+    """资源不存在应返回 404（而非 400），且错误体含 code/request_id。"""
+    for url in ("/api/jobs/nope", f"/api/watchlist/{TICKER}X", f"/api/plans/{TICKER}X"):
+        r = client.get(url)
+        assert r.status_code == 404, url
+        body = r.json()
+        assert body["code"] == "not_found"
+        assert "request_id" in body
+
+
+def test_validation_error_returns_422(client):
+    """schema 校验失败（空 ticker / 非法 depth）应返回 422 Unprocessable Entity。"""
+    assert client.post("/api/jobs", json={"ticker": "", "depth": "deep"}).status_code == 422
+    assert client.post("/api/jobs", json={"ticker": "x", "depth": "ultra"}).status_code == 422
+
+
+
 # ───────────────────────── 自选股 watchlist ─────────────────────────
 def test_watch_add_returns_snapshot():
     snap = WL.add_watch(TICKER, cost=1300.0, stop_loss=1200.0, target=1500.0, note="底仓")
@@ -203,4 +221,4 @@ def test_api_memory_endpoints(client):
 
 
 def test_api_version_is_300(client):
-    assert client.get("/api/health").json()["version"] == "3.0.0"
+    assert client.get("/api/health").json()["version"] == "3.0.1"

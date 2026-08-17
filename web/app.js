@@ -635,7 +635,7 @@
     try {
       const r = await fetch(`${api}/api/watchlist`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || "加入失败");
+      if (!r.ok) throw new Error((d.error || d.detail) || "加入失败");
       toast(`已加入自选：${d.item?.name || tk}`);
       $("#dk-ticker").value = "";
       refreshDesk();
@@ -666,7 +666,7 @@
     try {
       const r = await fetch(`${api}/api/plans/${encodeURIComponent(tk)}`, { method: "POST" });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || "生成失败");
+      if (!r.ok) throw new Error((d.error || d.detail) || "生成失败");
       toast("计划已更新"); loadPlans();
     } catch (e) { toast("生成失败：" + e.message); }
   }
@@ -689,7 +689,7 @@
     try {
       const r = await fetch(`${api}/api/watchlist`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticker: m.ticker, cost: m.price }) });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.detail || "加入失败");
+      if (!r.ok) throw new Error((d.error || d.detail) || "加入失败");
       toast(`已加入自选：${d.item?.name || m.ticker}`); refreshBadge();
     } catch (e) { toast("加入失败：" + e.message); }
   }

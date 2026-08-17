@@ -40,17 +40,21 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def _cors_list() -> list[str]:
+def _cors_origins() -> list[str]:
     if settings.cors_origins in ("*", "", None):
         return ["*"]
     return [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 
 
 def add_middleware(app: FastAPI) -> None:
+    # 安全：CORS 凭证（cookie/授权头）与通配源互斥——带凭证时不能用 "*"，
+    # 否则浏览器会拒绝。仅当显式指定源时才允许凭证。
+    origins = _cors_origins()
+    allow_credentials = origins != ["*"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=_cors_list(),
-        allow_credentials=True,
+        allow_origins=origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

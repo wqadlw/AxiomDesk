@@ -3,6 +3,17 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.0.1] — 2026-08-17
+
+### 上线级加固（架构 / 接口规范 / 前端专业度）
+- **接口规范化**：资源不存在改为正确的 `404`（原误用 `400`），并启用既有的 `NotFoundError`；schema 校验失败由 FastAPI 返回标准 `422`。新增统一错误契约回归测试。
+- **CORS 安全修复**：修正 `allow_origins=["*"]` 与 `allow_credentials=True` 的违规组合（带凭证时不能用通配源）；仅当显式指定源时才允许凭证。
+- **OpenAPI 元数据修正**：`app.py` 的 `version` 与 `description` 由过期的 `2.0.0` / "UZI-Skill 企业级落地" 更正为 `3.0.1` / AxiomDesk 四层研判说明，与 API `API_VERSION` 及品牌一致。
+- **前端专业度**：补齐 favicon（内联 SVG 菱形标）、`meta description` / `theme-color` / `color-scheme`；新增全局页脚（版本号 + 免责声明）；前端错误读取统一为后端 `error` 信封（`d.error || d.detail`），使操作失败提示展示真实服务端原因。
+
+### 交易逻辑边界（已审计）
+- 引擎层除零 / 空值 / AI 失败全部已有守卫：除零处均 `if base else 0.0` 等保护；`engine.analyze` 对 K 线取数、AI 叙述、记忆召回/沉淀均做 try/except 优雅降级（AI 失败回退离线模板）；计划/监控/评分模块对 `close<=0`、`risk>0`、`price` 等做了边界处理。本轮未改动引擎逻辑，仅以测试锁定契约。
+
 ## [3.0.0] — 2026-08-16
 
 ### 品牌升级：AxiomDesk · 公理级投研终端

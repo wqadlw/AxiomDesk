@@ -79,10 +79,11 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.app_name,
-        version="2.0.0",
+        version="3.0.1",
         description=(
-            "UZI-Skill 企业级落地：66 位投资大佬评审团 × 20 维框架 × DCF/Comps/LBO 估值 "
-            "× 8 信号杀猪盘检测。所有分析为规则引擎离线确定性计算，仅供研究参考，非投资建议。"
+            "AxiomDesk 公理级投研终端：市场情绪层 × 策略指标层 × 执行闭环 × 智能增强 四层研判，"
+            "66 位投资大佬评审团 × 20 维框架 × DCF/Comps/LBO 估值 × 游资确定性双轨评分 × 跨会话记忆。"
+            "分析为规则引擎确定性计算 + 可选 AI 研判，仅供研究参考，非投资建议。"
         ),
         docs_url=settings.docs_url or None,
         redoc_url="/redoc",

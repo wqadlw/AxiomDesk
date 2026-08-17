@@ -264,6 +264,16 @@ main { padding: 22px 26px 60px; min-width: 0; }
 .loading-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; text-align: center; color: var(--accent); }
 .loading-note { text-align: center; color: var(--muted); margin-top: 14px; font-size: 13px; }
 
+/* ───────── 全局页脚（免责 + 版本）───────── */
+.app-foot {
+  margin-top: 36px; padding: 14px 18px; border-top: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline;
+  font-size: 11.5px; color: var(--dim);
+}
+.app-foot .af-brand { color: var(--muted); font-weight: 600; letter-spacing: .3px; }
+.app-foot .af-brand b { color: var(--accent); }
+.app-foot .af-note { flex: 1; min-width: 280px; line-height: 1.5; }
+
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
