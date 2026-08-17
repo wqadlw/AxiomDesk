@@ -1,0 +1,27 @@
+# ── 跨平台换行符一致性（GitHub / Linux CI 统一使用 LF）──
+* text=auto eol=lf
+
+# 强制按文本处理
+*.py      text
+*.js      text
+*.css     text
+*.html    text
+*.md      text
+*.toml    text
+*.yml     text
+*.yaml    text
+*.json    text
+*.sh      text
+*.bat     text
+*.example text
+Dockerfile text
+
+# 二进制资源（不转换）
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
