@@ -3,6 +3,25 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.3.0] — 2026-08-17
+
+### 新功能：选股引擎（融合 Sequoia-X RPS 相对强度 + InStock 因子扫描 + stock-master 形态选股）
+- 新增市场级端点 `GET /api/screener`（双前缀 `/api` 与 `/api/v1` 均可用）：
+  - 复用既有 `engine` 的 `compute_all`（含 RPS 相对强度，基准为上证指数 `000001`）+ `strategy_signals.detect_all`（18 个实战形态信号），对一个股票池批量扫描。
+  - 综合评分（0~100）= 信号强度(50%) + RPS 相对强度(25%) + 动量(15%) + 筹码集中度(10%)。
+  - 支持 `universe=demo|watchlist`、`tickers=600519,300750…` 自定义池、`min_score` / `min_signals` 过滤、`side=bullish|bearish|any` 方向、`sort=score|rps|signals|momentum`、`limit`。
+  - 前端「**选股**」Tab：股票池 / 排序下拉 + 扫描按钮，返回排名表（评分·RPS·动量·多头信号，红涨绿跌着色）。
+  - demo 模式下由 provider 返回确定性 K 线，结果可复现。
+
+### 新功能：盘后速览（融合 daily_stock_analysis 收盘复盘）
+- 新增市场级端点 `GET /api/daily-digest`（双前缀）：把已上线的**情绪快照 / 连板梯队 / 板块轮动 / 龙虎榜游资评分**聚合成一份收盘后「一页速览」。
+  - 情绪（涨停家数 / 连板高度 / 炸板率 / 情绪阶段）+ 异动信号 + 10日强势主线 / 热点板块 / 连板梯队高度 + 弱势板块（风险）+ 龙虎榜游资焦点。
+  - 所有子模块均容错聚合，任一失败不影响整体；前端「**盘后速览**」Tab 直接呈现。
+
+### 工程
+- API 版本 `3.2.0 → 3.3.0`；新增 `server/services/screener.py`、`server/services/daily_digest.py` 及测试 `test_screener.py`、`test_daily_digest.py`。
+- 质量门禁全绿：ruff(lint+format) · mypy · pytest(81%) · bandit · node --check。
+
 ## [3.2.0] — 2026-08-17
 
 ### 新功能：板块轮动矩阵（融合 tickflow-stock-panel 轮动矩阵 + a-stock-data 板块资金流）

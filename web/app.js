@@ -107,7 +107,7 @@
   }
 
   // ───────── 导航 ─────────
-  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest" };
+  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest", screener: "screener", digest: "digest" };
   function setupNav() {
     $$("#nav .nav-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -124,6 +124,8 @@
           if (view === "market") renderLadder();
           if (view === "sector") renderSectorRotation();
           if (view === "backtest") renderBacktest();
+          if (view === "screener") renderScreener();
+          if (view === "digest") renderDailyDigest();
           return;
         }
         // 个股 report 内部 tab
@@ -709,6 +711,113 @@
       + `<polyline points="${pts}" class="bt-line"/></svg>`;
   }
 
+  // ───────── 选股引擎（融合 Sequoia-X RPS + InStock 因子 + stock-master 形态选股）─────────
+  async function renderScreener() {
+    const panel = $("#tab-screener");
+    const universe = ($("#sc-universe").value || "demo");
+    const sort = ($("#sc-sort").value || "score");
+    panel.innerHTML = '<div class="loading-title">正在扫描股票池并评分…</div>';
+    try {
+      const u = encodeURIComponent(universe);
+      const d = await (await fetch(`${api}/api/screener?universe=${u}&sort=${encodeURIComponent(sort)}&limit=30`)).json();
+      const stocks = d.stocks || [];
+      const card = (l, v) => `<div class="ov-card"><div class="ov-val">${v}</div><div class="ov-label">${l}</div></div>`;
+      let html = '<div class="ladder-overview">';
+      html += card("扫描样本", d.scanned ?? "—");
+      html += card("命中", d.matched ?? "—");
+      html += card("排序基准", { score: "综合评分", rps: "RPS 相对强度", signals: "多头信号数", momentum: "动量" }[sort] || sort);
+      html += card("RPS 基准", d.benchmark || "—");
+      html += "</div>";
+
+      if (!stocks.length) {
+        html += '<div class="ladder-note">当前筛选条件下没有命中标的。可切换为「演示池」或降低评分门槛。</div>';
+      } else {
+        html += '<div class="sr-table sc-tbl"><div class="sr-th sc-th">'
+          + '<span>#</span><span>名称 / 代码</span><span>行业</span><span>综合评分</span><span>RPS</span><span>动量</span><span>多头信号</span></div>';
+        stocks.forEach((s, i) => {
+          const sc = s.score ?? 0;
+          const scColor = sc >= 70 ? "#21c08a" : sc >= 50 ? "#6fcf97" : sc >= 30 ? "#f5a623" : "#ef9b4d";
+          const sig = (s.bull_signals || []).map(x => `<span class="sc-sig">${esc(x)}</span>`).join("") || '<span class="sc-sig none">—</span>';
+          html += `<div class="sr-tr sc-tr">`
+            + `<span class="sc-rank">${i + 1}</span>`
+            + `<span class="sc-name">${esc(s.name)} <i>${esc(s.ticker)}</i></span>`
+            + `<span class="sc-ind">${esc(s.industry)}</span>`
+            + `<span class="sc-score" style="color:${scColor}">${sc.toFixed(1)}</span>`
+            + `<span class="sc-rps">${(s.rps != null ? (s.rps * 100).toFixed(0) : "—")}</span>`
+            + `<span class="sc-mom ${s.momentum >= 0 ? "chg-pos" : "chg-neg"}">${pct(s.momentum)}</span>`
+            + `<span class="sc-sigs">${sig}</span>`
+            + `</div>`;
+        });
+        html += "</div>";
+      }
+      html += `<div class="ladder-note">数据源：内置演示基本面 + 确定性合成 K 线（已标注非真实行情）；评分为信号强度/RPS/动量/筹码的量化初筛，非投资建议。</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">选股扫描失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  // ───────── 盘后速览（融合 daily_stock_analysis 收盘复盘）─────────
+  async function renderDailyDigest() {
+    const panel = $("#tab-digest");
+    panel.innerHTML = '<div class="loading-title">正在聚合盘后速览…</div>';
+    try {
+      const d = await (await fetch(`${api}/api/daily-digest`)).json();
+      const emo = d.emotion || {};
+      const card = (l, v) => `<div class="ov-card"><div class="ov-val">${v}</div><div class="ov-label">${l}</div></div>`;
+      let html = '<div class="ladder-overview">';
+      html += card("涨停家数", emo.limit_count ?? "—");
+      html += card("最高连板", (emo.max_boards ?? "—") + " 板");
+      html += card("炸板率", emo.break_rate != null ? (emo.break_rate * 100).toFixed(0) + "%" : "—");
+      html += card("情绪阶段", emo.stage || "—");
+      html += "</div>";
+
+      if (d.anomalies && d.anomalies.length) {
+        html += '<div class="ladder-anom">';
+        d.anomalies.forEach(a => { html += `<div class="anom anom-${a.level}"><b>【${a.type}】</b>${esc(a.msg)}</div>`; });
+        html += "</div>";
+      }
+
+      if (d.strong_sectors && d.strong_sectors.length) {
+        html += '<h3 class="ladder-h">10 日强势主线</h3><div class="hot-sectors">';
+        d.strong_sectors.forEach(s => { html += `<span class="hs">${esc(s.name)} <b>${(s.change_pct != null ? (s.change_pct * 100).toFixed(0) + "%" : "—")}</b></span>`; });
+        html += "</div>";
+      }
+      if (d.hot_sectors && d.hot_sectors.length) {
+        html += '<h3 class="ladder-h">涨停分布 · 热点板块</h3><div class="hot-sectors">';
+        d.hot_sectors.forEach(s => { html += `<span class="hs">${esc(s.name)} <b>${s.limit_count ?? 0}</b></span>`; });
+        html += "</div>";
+      }
+      if (d.ladder_top && d.ladder_top.length) {
+        html += '<h3 class="ladder-h">连板梯队高度</h3><div class="ladder">';
+        d.ladder_top.forEach(t => {
+          const names = (t.names || []).map(n => `<span class="lb-stock">${esc(n)}</span>`).join("");
+          html += `<div class="ladder-row"><div class="lb-board">${(t.board || "?")}板 <span class="lb-count">${t.count ?? 0}</span></div><div class="lb-stocks">${names}</div></div>`;
+        });
+        html += "</div>";
+      }
+      if (d.weak_sectors && d.weak_sectors.length) {
+        html += '<h3 class="ladder-h">弱势板块（风险）</h3><div class="hot-sectors weak">';
+        d.weak_sectors.forEach(s => { html += `<span class="hs weak">${esc(s.name)} <b>${(s.change_pct != null ? (s.change_pct * 100).toFixed(0) + "%" : "—")}</b></span>`; });
+        html += "</div>";
+      }
+      if (d.youzi_focus && d.youzi_focus.length) {
+        html += '<h3 class="ladder-h">游资焦点（龙虎榜）</h3><div class="mon-pool">';
+        d.youzi_focus.forEach(r => {
+          const sign = (r.net_buy_yi ?? 0) >= 0 ? "+" : "";
+          html += `<span class="mp lh-tier-${_lh_tier(r.total ?? 0)}">${esc(r.name)} <i>${esc(r.tier || "")} ${sign}${fmt(r.net_buy_yi)}亿</i></span>`;
+        });
+        html += "</div>";
+      }
+      html += `<div class="ladder-note">数据源：${d.source === "live" ? "实时(东财)" : "离线演示"} · ${d.as_of || ""}${d.source !== "live" ? " · 演示数据不代表真实行情" : ""}</div>`;
+      $("#dg-source").hidden = false;
+      $("#dg-source").textContent = (d.source === "live" ? "实时(东财)" : "离线演示") + (d.as_of ? " · " + d.as_of : "");
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">盘后速览生成失败：${esc(e.message)}</div>`;
+    }
+  }
+
   // ───────── 自选·监控（执行层：自选/计划/预警/记忆）─────────
   async function renderDesk() {
     const panel = $("#tab-desk");
@@ -1152,6 +1261,10 @@
     $("#ladder-refresh").addEventListener("click", () => { if (!$("#market").hidden) renderLadder(); });
     $("#sector-refresh").addEventListener("click", () => { if (!$("#sector").hidden) renderSectorRotation(); });
     $("#bt-run").addEventListener("click", () => { if (!$("#backtest").hidden) renderBacktest(); });
+    $("#sc-scan").addEventListener("click", () => { if (!$("#screener").hidden) renderScreener(); });
+    $("#sc-universe").addEventListener("change", () => { if (!$("#screener").hidden) renderScreener(); });
+    $("#sc-sort").addEventListener("change", () => { if (!$("#screener").hidden) renderScreener(); });
+    $("#dg-refresh").addEventListener("click", () => { if (!$("#digest").hidden) renderDailyDigest(); });
     $("#bt-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#backtest").hidden) renderBacktest(); });
     refreshBadge();
     // 报告头也能点回概览

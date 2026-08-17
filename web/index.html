@@ -51,6 +51,8 @@
       <button class="nav-btn ladder-nav" data-tab="ladder"><span class="ni">⇡</span>连板梯队</button>
       <button class="nav-btn sector-nav" data-tab="sector"><span class="ni">▦</span>板块轮动</button>
       <button class="nav-btn backtest-nav" data-tab="backtest"><span class="ni">📈</span>信号回测</button>
+      <button class="nav-btn screener-nav" data-tab="screener"><span class="ni">🎯</span>选股</button>
+      <button class="nav-btn digest-nav" data-tab="digest"><span class="ni">🗞</span>盘后速览</button>
       <button class="nav-btn config-nav" data-tab="config"><span class="ni">⚙</span>接口配置</button>
     </nav>
 
@@ -164,8 +166,51 @@
       </div>
     </section>
 
+    <!-- 市场级：选股引擎（融合 Sequoia-X RPS + InStock 因子 + stock-master 形态选股） -->
+    <section id="screener" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">选股引擎</div>
+          <div class="rh-sub" id="sc-sub">批量扫描股票池，综合评分（信号强度 + RPS 相对强度 + 动量 + 筹码）</div>
+        </div>
+        <div class="rh-right">
+          <select id="sc-universe" class="ghost-input sm">
+            <option value="demo">演示池</option>
+            <option value="watchlist">自选股</option>
+          </select>
+          <select id="sc-sort" class="ghost-input sm">
+            <option value="score">按评分</option>
+            <option value="rps">按 RPS</option>
+            <option value="signals">按信号数</option>
+            <option value="momentum">按动量</option>
+          </select>
+          <button id="sc-scan" class="ghost-btn sm" title="运行选股扫描">▶ 扫描</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-screener"></div>
+      </div>
+    </section>
+
+    <!-- 市场级：盘后速览（融合 daily_stock_analysis 收盘复盘） -->
+    <section id="digest" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">盘后速览</div>
+          <div class="rh-sub" id="dg-sub">收盘后一页速览：情绪 · 主线 · 异动 · 风险</div>
+        </div>
+        <div class="rh-right">
+          <span class="rh-dataq" id="dg-source" hidden></span>
+          <button id="dg-refresh" class="ghost-btn sm" title="重新生成盘后速览">⟳ 刷新</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-digest"></div>
+      </div>
+    </section>
+
     <footer class="app-foot">
-      <span class="af-brand">AxiomDesk <b>v3.2.0</b> · 公理级投研终端</span>
+      <span class="af-brand">AxiomDesk <b>v3.3.0</b> · 公理级投研终端</span>
       <span class="af-note">数据可能为实时行情 / 估算推导 / 离线合成；研判可由 AI 驱动。本终端仅用于研究与学习，所有结论不构成任何投资建议。</span>
     </footer>
   </main>

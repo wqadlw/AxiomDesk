@@ -33,14 +33,16 @@ from ..llm.factory import reload_llm
 from ..providers.base import ProviderError
 from ..providers.factory import reload_provider
 from ..providers.registry import PROVIDER_META, class_for
+from ..services import daily_digest as DD
 from ..services import memory as MEM
 from ..services import monitor as MN
 from ..services import plan as PL
+from ..services import screener as SC
 from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.2.0"
+API_VERSION = "3.3.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -477,6 +479,38 @@ def _backtest(
     return {"version": API_VERSION, **BR.run_backtest(ticker=ticker, days=days)}
 
 
+def _screener(
+    universe: str = Query("demo", description="股票池：demo(演示池) | watchlist(自选) | 任意(配合 tickers)"),
+    tickers: str | None = Query(None, description="逗号分隔的自定义代码列表，覆盖 universe"),
+    min_score: float = Query(0.0, description="最低综合评分（0~100）", ge=0, le=100),
+    min_signals: int = Query(0, description="最少命中多头信号数", ge=0, le=18),
+    side: str = Query("bullish", description="方向过滤：bullish | bearish | any"),
+    sort: str = Query("score", description="排序：score | rps | signals | momentum"),
+    limit: int = Query(20, description="返回条数上限", ge=1, le=60),
+):
+    """选股引擎（融合 Sequoia-X RPS 相对强度 + InStock 因子扫描 + stock-master 形态选股）。
+
+    复用 engine 的 compute_all(含 RPS) / detect_all(18 形态信号)，对股票池批量评分排序。
+    """
+    return {
+        "version": API_VERSION,
+        **SC.scan(
+            universe=universe,
+            tickers=tickers,
+            min_score=min_score,
+            min_signals=min_signals,
+            side=side,
+            sort=sort,
+            limit=limit,
+        ),
+    }
+
+
+def _daily_digest(date_s: str | None = Query(None, description="可选：指定日期 YYYYMMDD（默认当日）")):
+    """盘后速览（融合 daily_stock_analysis 收盘复盘）：聚合情绪/连板/板块/龙虎榜为一页速览。"""
+    return {"version": API_VERSION, **DD.build_digest(date_s=date_s)}
+
+
 # 注册到两个路由对象
 for _rtr in (router, router_v1):
     _rtr.add_api_route("/health", _health, methods=["GET"])
@@ -520,3 +554,7 @@ for _rtr in (router, router_v1):
     _rtr.add_api_route("/longhubang", _longhubang, methods=["GET"])
     # ── 个股级：信号胜率回测 + 净值模拟（融合 tickflow 回测 + instock rate_stats）──
     _rtr.add_api_route("/backtest", _backtest, methods=["GET"])
+    # ── 市场级：选股引擎（融合 Sequoia-X RPS + InStock 因子 + stock-master 形态）──
+    _rtr.add_api_route("/screener", _screener, methods=["GET"])
+    # ── 市场级：盘后速览（融合 daily_stock_analysis 收盘复盘）──
+    _rtr.add_api_route("/daily-digest", _daily_digest, methods=["GET"])

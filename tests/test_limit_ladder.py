@@ -11,7 +11,7 @@ from __future__ import annotations
 
 
 def _assert_shape(d: dict) -> None:
-    assert d["version"] == "3.2.0"
+    assert d["version"] == "3.3.0"
     assert d["source"] == "demo"
     assert isinstance(d["ladder"], list) and d["ladder"]
     # 连板数自高向低严格递减

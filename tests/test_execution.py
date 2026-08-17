@@ -219,5 +219,5 @@ def test_api_memory_endpoints(client):
     assert client.get(f"/api/memory/{TICKER}/rounds").json()["rounds"] == []
 
 
-def test_api_version_is_320(client):
-    assert client.get("/api/health").json()["version"] == "3.2.0"
+def test_api_version_is_330(client):
+    assert client.get("/api/health").json()["version"] == "3.3.0"

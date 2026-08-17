@@ -59,12 +59,14 @@ flowchart TB
 - **全市场情绪快照**：涨停池 / 连板高度 / 炸板率 / 板块资金主线 / 上证指数，实时注入「情绪周期」信号与叙事层（离线自动合成，确定性可测）。
 - **连板梯队 · 涨停异动监控**：在情绪快照之上派生「连板梯队」（按连板数自高向低分层）、3 板以上高位股的「重点监控池」、涨停股行业聚合的「热点板块主线」，并自动识别连板高度 / 炸板率 / 情绪偏离的「异动信号」；前端「连板梯队」Tab 一并呈现，开盘前快速把握市场接力强度与主线方向（融合自 a-stock-data / tickflow-stock-panel）。该 Tab 还内嵌「龙虎榜游资评分」卡片。
 - **板块轮动矩阵**：直连东财抓取行业 / 概念板块的**今日 · 5日 · 10日涨跌幅**与**主力净流入 / 净占比**，自动派生「10日强势主线 / 弱势板块」两组清单，前端「板块轮动」Tab 用红涨绿跌配色定位板块轮动方向（融合自 tickflow-stock-panel 轮动矩阵 + a-stock-data 板块资金流）。
+- **选股引擎**：复用内置 `engine` 的 `compute_all`（含 RPS 相对强度，基准上证指数）与 `detect_all`（18 个实战形态信号），对一个股票池批量扫描并给出综合评分（0~100 = 信号强度 50% + RPS 25% + 动量 15% + 筹码集中度 10%）。支持 `universe=demo|watchlist`、自定义 `tickers`、按评分 / RPS / 信号数 / 动量排序与过滤，前端「选股」Tab 输出排名表（融合自 Sequoia-X RPS 相对强度 + InStock 因子扫描 + stock-master 形态选股）。
+- **盘后速览**：`GET /api/daily-digest` 把情绪快照 / 连板梯队 / 板块轮动 / 龙虎榜游资评分聚合成收盘后「一页速览」（情绪 · 主线 · 异动 · 风险 + 游资焦点），前端「盘后速览」Tab 直接呈现，融合自 daily_stock_analysis 的收盘复盘思路。
 - **实证策略信号**：18 个实战形态信号（含 KDJ / BOLL / RSI / CCI / OBV / 筹码分布 CYQ / RPS 相对强度），每个信号附 1/5/20 日**历史胜率回测**，标注「实证可信 / 实证偏弱」；前端「信号回测」Tab 可对单只标的运行回放、绘制演示净值曲线（总收益 / 最大回撤 / 夏普），融合自 tickflow 回测可视化 + instock rate_stats。
 - **游资专精分析**：龙虎榜席位 / 净买 / 机构 / 主力五维确定性打分（0~100），作为 AI 研判的「第二轨」校验锚点；游资派买入区间由 POC 与净买额真实计算。另设 `GET /api/longhubang` 端点与「连板梯队」Tab 内嵌的龙虎榜评分卡片（资金含金量 / 净流入 / 抛压 / 机构共振 / 顶级游资席位命中五维加权，给出抢筹档位与席位标签），融合自 aiagents-stock 的 longhubang_scoring 体系。
 - **执行层闭环**：自选股实时盈亏 → 多情景操作计划（入场区 / 止损 / 目标 / RR / 仓位）→ 盘中 5 类事件预警（30 分钟去重），配「自选·监控」前端面板。
 - **跨会话记忆**：每只股票独立沉淀「事实 / 观点 / 决策」记忆（SQLite），下次分析自动回填给 AI 研判层，保持决策连续性。
 - **AI 研判层**：接入真实 DeepSeek（OpenAI 兼容协议，零额外 SDK）；无 Key 时自动降级为离线「模板研判」，结论含数字引用与「但是」结构，并新增**辩论主持人收束**（条件化执行结论）。
-- **彭博风终端**：原生 JS / CSS 前端（无构建步骤），红涨绿跌（中国习惯），14 个 Tab 全景呈现分析结论。
+- **彭博风终端**：原生 JS / CSS 前端（无构建步骤），红涨绿跌（中国习惯），16 个 Tab 全景呈现分析结论。
 - **工程化就绪**：FastAPI 版本化 API（`/api` + `/api/v1`）、结构化日志与 Request-ID、异步任务 + SQLite 历史、横向对比、Docker / Compose / Makefile / CI。
 
 ---
@@ -74,7 +76,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph Browser["浏览器 (web/ 原生 JS/CSS · 红涨绿跌)"]
-        UI[彭博风终端 · 14 Tab · 含「自选·监控 / 连板梯队 / 板块轮动 / 信号回测」]
+        UI[彭博风终端 · 16 Tab · 含「自选·监控 / 连板梯队 / 板块轮动 / 信号回测 / 选股 / 盘后速览」]
     end
     subgraph API["FastAPI 应用 (server/app.py)"]
         R[api/routes.py<br/>版本化路由 · 统一异常 · CORS · Request-ID]
@@ -215,6 +217,8 @@ start.bat         # Windows 双击
 | GET  | `/api/sector-rotation?top_n=30` | 板块轮动矩阵：行业 / 概念板块今日·5日·10日涨幅与主力净流入（融合 tickflow 轮动矩阵 + a-stock-data 板块资金流） |
 | GET  | `/api/longhubang?date_s=YYYYMMDD&top_n=20` | 龙虎榜游资评分：综合分 / 档位 / 席位标签（融合 aiagents-stock longhubang_scoring） |
 | GET  | `/api/backtest?ticker=600519&days=130` | 信号胜率回测 + 演示净值曲线（融合 tickflow 回测可视化 + instock rate_stats） |
+| GET  | `/api/screener?universe=demo&sort=score&limit=30` | 选股引擎：股票池批量评分（信号强度 + RPS + 动量 + 筹码），支持 watchlist / 自定义池 / 过滤（融合 Sequoia-X RPS + InStock 因子 + stock-master 形态） |
+| GET  | `/api/daily-digest` | 盘后速览：聚合情绪 / 连板 / 板块 / 龙虎榜为一页速览（融合 daily_stock_analysis 复盘） |
 
 完整请求 / 响应示例见 [docs/API.md](docs/API.md)。
 
@@ -300,6 +304,8 @@ ruff format --check server/ tests/
 - [x] 板块轮动矩阵（行业 / 概念今日·5日·10日涨幅 + 主力净流入 · 强势/弱势主线）
 - [x] 龙虎榜游资评分（综合分 / 档位 / 席位标签，内嵌连板梯队 Tab）
 - [x] 信号胜率回测端点 + 净值可视化（单标的回放 + 演示净值曲线）
+- [x] 选股引擎（RPS + 因子 + 形态批量评分，demo / watchlist / 自定义池）
+- [x] 盘后速览（情绪 / 主线 / 异动 / 风险 一页聚合）
 - [ ] 财务数据真实化（接入财报接口补全营收 / 净利 / ROE 等）
 - [ ] 报告导出（PDF / Markdown）
 - [ ] 报告对比快照（同一标的跨日 diff）
