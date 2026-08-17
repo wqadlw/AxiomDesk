@@ -107,18 +107,30 @@
   }
 
   // ───────── 导航 ─────────
+  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest" };
   function setupNav() {
     $$("#nav .nav-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         $$("#nav .nav-btn").forEach(b => b.classList.remove("active"));
-        $$(".tab-panel").forEach(p => (p.hidden = true));
         btn.classList.add("active");
-        // 市场级视图（连板梯队）独立于个股 report，单独显隐
-        const isMarket = btn.dataset.tab === "ladder";
+        const view = STANDALONE[btn.dataset.tab];
+        if (view) {
+          // 市场级独立视图（连板梯队 / 板块轮动 / 信号回测），单独显隐
+          $("#empty").hidden = true;
+          $("#report").hidden = true;
+          $$(".standalone").forEach(s => (s.hidden = true));
+          $("#" + view).hidden = false;
+          $("#tab-" + view).hidden = false;
+          if (view === "market") renderLadder();
+          if (view === "sector") renderSectorRotation();
+          if (view === "backtest") renderBacktest();
+          return;
+        }
+        // 个股 report 内部 tab
         $("#empty").hidden = true;
-        $("#report").hidden = true;
-        $("#market").hidden = !isMarket;
-        if (isMarket) { $("#tab-ladder").hidden = false; renderLadder(); return; }
+        $("#report").hidden = false;
+        $$(".standalone").forEach(s => (s.hidden = true));
+        $$(".tab-panel").forEach(p => (p.hidden = true));
         $("#tab-" + btn.dataset.tab).hidden = false;
         if (btn.dataset.tab === "jury") renderJury();
         if (btn.dataset.tab === "valuation") renderValuation();
@@ -572,11 +584,129 @@
         html += "</div>";
       }
 
+      // ── 龙虎榜游资评分（融合 aiagents-stock 评分体系）──
+      try {
+        const lh = await (await fetch(`${api}/api/longhubang`)).json();
+        if (lh && lh.rows && lh.rows.length) {
+          html += `<h3 class="ladder-h">龙虎榜游资评分 <span class="lh-src">${lh.source === "live" ? "实时(东财)" : "离线演示"}</span></h3><div class="lh-list">`;
+          lh.rows.forEach(r => {
+            const tags = (r.tags || []).map(t => `<span class="lh-tag">${esc(t)}</span>`).join("");
+            const sign = r.net_buy_yi >= 0 ? "+" : "";
+            html += `<div class="lh-row lh-tier-${_lh_tier(r.total)}"><div class="lh-name">${esc(r.name)} <i>${esc(r.code)}</i></div>`
+              + `<div class="lh-score">${r.total}<small>分</small></div>`
+              + `<div class="lh-tier">${esc(r.tier)}</div>`
+              + `<div class="lh-net">${sign}${r.net_buy_yi.toFixed(2)}亿</div>`
+              + `<div class="lh-tags">${tags}</div></div>`;
+          });
+          html += "</div>";
+        }
+      } catch (_e) { /* 龙虎榜加载失败不影响梯队主视图 */ }
+
       html += `<div class="ladder-note">数据源：${d.source === "live" ? "实时(东财 push2ex)" : "离线演示"} · ${d.as_of || ""}${d.source !== "live" ? " · 演示数据不代表真实行情" : ""}</div>`;
       panel.innerHTML = html;
     } catch (e) {
       panel.innerHTML = `<div class="loading-title">连板数据加载失败：${esc(e.message)}</div>`;
     }
+  }
+
+  function _lh_tier(total) { return total >= 80 ? "s" : total >= 60 ? "a" : total >= 40 ? "b" : "c"; }
+
+  // ───────── 板块轮动矩阵（融合 tickflow 轮动矩阵 + a-stock-data 板块资金流）─────────
+  async function renderSectorRotation() {
+    const panel = $("#tab-sector");
+    panel.innerHTML = '<div class="loading-title">正在拉取板块轮动快照…</div>';
+    try {
+      const d = await (await fetch(`${api}/api/sector-rotation`)).json();
+      $("#sector-source").hidden = false;
+      $("#sector-source").textContent = (d.source === "live" ? "实时(东财)" : "离线演示") + (d.as_of ? " · " + d.as_of : "");
+
+      const pct = v => (v * 100).toFixed(2) + "%";
+      const cell = v => `<span class="${v >= 0 ? "chg-pos" : "chg-neg"}">${v >= 0 ? "+" : ""}${pct(v)}</span>`;
+      const netCell = v => `<span class="${v >= 0 ? "chg-pos" : "chg-neg"}">${v >= 0 ? "+" : ""}${v.toFixed(1)}亿</span>`;
+
+      let html = "";
+      if (d.leaders && d.leaders.length) {
+        html += '<div class="sr-leaders"><span class="sr-lbl">10日强势主线 ▲</span>';
+        d.leaders.slice(0, 6).forEach(s => { html += `<span class="sr-chip chg-pos">${esc(s.name)} ${pct(s.chg_10d)}</span>`; });
+        html += "</div>";
+      }
+      if (d.laggards && d.laggards.length) {
+        html += '<div class="sr-leaders"><span class="sr-lbl">10日弱势板块 ▼</span>';
+        d.laggards.slice(0, 6).forEach(s => { html += `<span class="sr-chip chg-neg">${esc(s.name)} ${pct(s.chg_10d)}</span>`; });
+        html += "</div>";
+      }
+
+      const board = (title, rows) => {
+        if (!rows || !rows.length) return "";
+        let h = `<h3 class="ladder-h">${title}</h3><div class="sr-table"><div class="sr-th"><span>板块</span><span>今日</span><span>5日</span><span>10日</span><span>主力净流入</span><span>净占比</span></div>`;
+        rows.forEach(r => {
+          h += `<div class="sr-tr"><span class="sr-name">${esc(r.name)}</span>${cell(r.change_pct)}${cell(r.chg_5d)}${cell(r.chg_10d)}${netCell(r.net_inflow_yi)}<span class="${r.net_ratio >= 0 ? "chg-pos" : "chg-neg"}">${pct(r.net_ratio)}</span></div>`;
+        });
+        return h + "</div>";
+      };
+      html += board("行业板块", d.industry);
+      html += board("概念板块", d.concept);
+      html += `<div class="ladder-note">数据源：${d.source === "live" ? "实时(东财 push2 clist)" : "离线演示"} · ${d.as_of || ""}${d.source !== "live" ? " · 演示数据不代表真实行情" : ""} · 红涨绿跌</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">板块轮动加载失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  // ───────── 信号胜率回测 + 净值模拟（融合 tickflow 回测 + instock rate_stats）─────────
+  async function renderBacktest() {
+    const panel = $("#tab-backtest");
+    const ticker = ($("#bt-ticker").value || "600519").trim();
+    panel.innerHTML = '<div class="loading-title">正在回放信号历史胜率…</div>';
+    try {
+      const d = await (await fetch(`${api}/api/backtest?ticker=${encodeURIComponent(ticker)}`)).json();
+      if (!d.available) {
+        panel.innerHTML = `<div class="loading-title">无法回测：${esc(d.reason || "未知原因")}</div>`;
+        return;
+      }
+      const s = d.summary || {};
+      const card = (l, v) => `<div class="ov-card"><div class="ov-val">${v}</div><div class="ov-label">${l}</div></div>`;
+      let html = `<div class="ladder-overview">`;
+      html += card("已回测信号", s.signals_checked ?? "—");
+      html += card("样本数", s.total_samples ?? "—");
+      html += card("5日胜率", s.win_rate != null ? (s.win_rate * 100).toFixed(1) + "%" : "—");
+      html += card("5日均收益", s.avg_return != null ? (s.avg_return * 100).toFixed(2) + "%" : "—");
+      html += "</div>";
+
+      const eq = (d.equity || {});
+      html += `<div class="bt-eq">`;
+      html += `<div class="bt-eq-head">演示净值曲线（起始 1.0）· 总收益 <b class="${eq.total_return >= 0 ? "chg-pos" : "chg-neg"}">${(eq.total_return * 100).toFixed(1)}%</b> · 最大回撤 <b>${(eq.max_drawdown * 100).toFixed(1)}%</b> · 夏普 <b>${eq.sharpe ?? "—"}</b></div>`;
+      html += _equitySvg(eq.curve || []) + "</div>";
+
+      if (d.signal_stats && d.signal_stats.length) {
+        html += '<h3 class="ladder-h">信号历史胜率（回放检测）</h3><div class="sr-table bt-tbl"><div class="sr-th"><span>信号</span><span>样本</span><span>1日胜率</span><span>5日胜率</span><span>20日胜率</span><span>5日均收益</span></div>';
+        d.signal_stats.forEach(x => {
+          const h = x.horizons || {};
+          const wr = p => (h[p] ? (h[p].win_rate * 100).toFixed(0) + "%" : "—");
+          const ar = p => (h[p] ? (h[p].avg_return * 100).toFixed(2) + "%" : "—");
+          html += `<div class="sr-tr"><span class="sr-name">${esc(x.signal_id)}</span><span>${x.samples ?? "—"}</span><span>${wr("1")}</span><span>${wr("5")}</span><span>${wr("20")}</span><span>${ar("5")}</span></div>`;
+        });
+        html += "</div>";
+      }
+      html += `<div class="ladder-note">数据源：${d.source === "live" ? "实时行情" : "离线演示"} · 净值模拟为「强多头信号买入 / 强空头或到期卖出」演示策略，非投资建议</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">回测加载失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  function _equitySvg(curve) {
+    if (!curve.length) return "";
+    const W = 680, H = 180, pad = 10;
+    const mn = Math.min(...curve), mx = Math.max(...curve);
+    const span = (mx - mn) || 1;
+    const x = i => pad + (i / (curve.length - 1)) * (W - 2 * pad);
+    const y = v => H - pad - ((v - mn) / span) * (H - 2 * pad);
+    const pts = curve.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    const base = y(1.0);
+    return `<svg viewBox="0 0 ${W} ${H}" class="bt-svg" preserveAspectRatio="none">`
+      + `<line x1="${pad}" y1="${base}" x2="${W - pad}" y2="${base}" class="bt-base"/>`
+      + `<polyline points="${pts}" class="bt-line"/></svg>`;
   }
 
   // ───────── 自选·监控（执行层：自选/计划/预警/记忆）─────────
@@ -1020,6 +1150,9 @@
     $("#cmp-run").addEventListener("click", runCompare);
     $("#btn-addwatch").addEventListener("click", addWatchCurrent);
     $("#ladder-refresh").addEventListener("click", () => { if (!$("#market").hidden) renderLadder(); });
+    $("#sector-refresh").addEventListener("click", () => { if (!$("#sector").hidden) renderSectorRotation(); });
+    $("#bt-run").addEventListener("click", () => { if (!$("#backtest").hidden) renderBacktest(); });
+    $("#bt-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#backtest").hidden) renderBacktest(); });
     refreshBadge();
     // 报告头也能点回概览
     renderPipeline();

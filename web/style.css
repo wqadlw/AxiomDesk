@@ -392,3 +392,50 @@ code { background: var(--panel-3); padding: 1px 6px; border-radius: 5px; font-si
 .rh-dataq { font-size: 11.5px; color: var(--accent-2); }
 @media (max-width: 640px) { .ladder-overview { grid-template-columns: repeat(2, 1fr); } }
 .mem-text { color: var(--text); }
+
+/* ── 板块轮动矩阵 ── */
+.sr-leaders { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 14px; }
+.sr-lbl { font-size: 12px; color: var(--dim); margin-right: 4px; }
+.sr-chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--border); }
+.sr-table { display: flex; flex-direction: column; gap: 3px; }
+.sr-th, .sr-tr { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr 1.2fr 1fr; gap: 10px; align-items: center;
+  padding: 7px 14px; font-size: 12.5px; border-radius: 7px; }
+.sr-th { color: var(--dim); font-size: 11.5px; border-bottom: 1px solid var(--border); }
+.sr-tr { background: var(--panel); border: 1px solid var(--border); }
+.sr-name { color: var(--text); font-weight: 600; }
+.chg-pos { color: var(--up); font-weight: 600; }
+.chg-neg { color: var(--down); font-weight: 600; }
+
+/* ── 龙虎榜游资评分 ── */
+.lh-src { font-size: 11px; color: var(--accent-2); font-weight: 400; margin-left: 6px; }
+.lh-list { display: flex; flex-direction: column; gap: 6px; }
+.lh-row { display: grid; grid-template-columns: 1.4fr 0.7fr 1.1fr 0.9fr 2fr; gap: 10px; align-items: center;
+  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 12.5px; }
+.lh-tier-s { border-left-color: #e23b3b; }
+.lh-tier-a { border-left-color: #ef8c2a; }
+.lh-tier-b { border-left-color: #2f86e0; }
+.lh-tier-c { border-left-color: var(--dim); }
+.lh-name { color: var(--text); font-weight: 600; }
+.lh-name i { color: var(--dim); font-style: normal; font-size: 11px; margin-left: 4px; }
+.lh-score { font-size: 18px; font-weight: 700; color: var(--text); }
+.lh-score small { font-size: 11px; color: var(--dim); font-weight: 400; }
+.lh-tier { color: var(--accent-2); }
+.lh-net { font-weight: 600; }
+.lh-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.lh-tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(226,59,59,.12); color: #e23b3b; border: 1px solid rgba(226,59,59,.3); }
+.lh-tag:last-child { background: rgba(47,134,224,.12); color: #2f86e0; border-color: rgba(47,134,224,.3); }
+
+/* ── 信号回测 ── */
+.bt-eq { margin: 6px 0 18px; }
+.bt-eq-head { font-size: 12.5px; color: var(--dim); margin-bottom: 6px; }
+.bt-eq-head b { font-size: 13px; }
+.bt-svg { width: 100%; height: 180px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+.bt-line { fill: none; stroke: var(--accent-2); stroke-width: 2; }
+.bt-base { stroke: var(--border); stroke-dasharray: 4 4; }
+.bt-tbl .sr-name { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; }
+
+@media (max-width: 640px) {
+  .sr-th, .sr-tr { grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 1.1fr 0.9fr; font-size: 11.5px; }
+  .lh-row { grid-template-columns: 1.2fr 0.6fr 1fr 0.8fr 1.8fr; }
+}
+

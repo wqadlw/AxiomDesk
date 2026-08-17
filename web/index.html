@@ -49,6 +49,8 @@
       <button class="nav-btn" data-tab="desk"><span class="ni">★</span>自选·监控<span id="desk-badge" class="nav-badge" hidden></span></button>
       <div class="nav-div"></div>
       <button class="nav-btn ladder-nav" data-tab="ladder"><span class="ni">⇡</span>连板梯队</button>
+      <button class="nav-btn sector-nav" data-tab="sector"><span class="ni">▦</span>板块轮动</button>
+      <button class="nav-btn backtest-nav" data-tab="backtest"><span class="ni">📈</span>信号回测</button>
       <button class="nav-btn config-nav" data-tab="config"><span class="ni">⚙</span>接口配置</button>
     </nav>
 
@@ -112,7 +114,7 @@
     </section>
 
     <!-- 市场级：连板梯队 / 涨停异动监控（融合 a-stock-data / tickflow-stock-panel） -->
-    <section id="market" class="report" hidden>
+    <section id="market" class="report standalone" hidden>
       <div class="report-head">
         <div class="rh-left">
           <div class="rh-name">连板梯队 · 涨停异动监控</div>
@@ -128,8 +130,42 @@
       </div>
     </section>
 
+    <!-- 市场级：板块轮动矩阵（融合 tickflow 轮动矩阵 + a-stock-data 板块资金流） -->
+    <section id="sector" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">板块轮动矩阵</div>
+          <div class="rh-sub" id="sector-sub">行业 / 概念板块的今日·5日·10日涨幅与主力净流入</div>
+        </div>
+        <div class="rh-right">
+          <span class="rh-dataq" id="sector-source" hidden></span>
+          <button id="sector-refresh" class="ghost-btn sm" title="重新拉取板块快照">⟳ 刷新</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-sector"></div>
+      </div>
+    </section>
+
+    <!-- 个股级：信号胜率回测 + 净值模拟（融合 tickflow 回测 + instock rate_stats） -->
+    <section id="backtest" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">信号胜率回测</div>
+          <div class="rh-sub" id="bt-sub">技术信号历史胜率 + 演示净值曲线</div>
+        </div>
+        <div class="rh-right">
+          <input id="bt-ticker" class="ghost-input sm" placeholder="代码 如 600519" value="600519" />
+          <button id="bt-run" class="ghost-btn sm" title="运行回测">▶ 回测</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-backtest"></div>
+      </div>
+    </section>
+
     <footer class="app-foot">
-      <span class="af-brand">AxiomDesk <b>v3.1.0</b> · 公理级投研终端</span>
+      <span class="af-brand">AxiomDesk <b>v3.2.0</b> · 公理级投研终端</span>
       <span class="af-note">数据可能为实时行情 / 估算推导 / 离线合成；研判可由 AI 驱动。本终端仅用于研究与学习，所有结论不构成任何投资建议。</span>
     </footer>
   </main>

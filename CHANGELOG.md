@@ -3,6 +3,33 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.2.0] — 2026-08-17
+
+### 新功能：板块轮动矩阵（融合 tickflow-stock-panel 轮动矩阵 + a-stock-data 板块资金流）
+- 新增市场级端点 `GET /api/sector-rotation`（双前缀 `/api` 与 `/api/v1` 均可用）：
+  - 直连东财 `push2 clist` 抓取**行业 / 概念**板块的**今日 / 5日 / 10日涨跌幅**与**主力净流入 / 净占比**（零鉴权）。
+  - 自动派生「10日强势主线」「10日弱势板块」两组领涨 / 领跌清单，定位板块轮动方向。
+  - 自带短 TTL 缓存；`AXIOM_DATA_SOURCE=demo` 或任意网络失败 → 确定性 demo 兜底，**永不抛错**。
+- 前端新增「板块轮动」独立 Tab：行业 / 概念两张轮动表（红涨绿跌配色），附强势 / 弱势主线 chips。
+
+### 新功能：龙虎榜游资评分（融合 aiagents-stock longhubang_scoring 体系）
+- 新增市场级端点 `GET /api/longhubang`（双前缀均可用）：best-effort 拉取东财龙虎榜明细，对个股给出
+  **游资参与度综合评分（0~100）**——资金含金量 / 净流入 / 抛压 / 机构共振 / 顶级游资席位命中五维加权，
+  并给出 `顶级游资抢筹 / 机构·游资共振 / 游资参与 / 一般` 档位与席位标签。
+- 与 v3.1.0 的连板梯队天然互补：高位连板股正是最易上龙虎榜的短线定价区；评分卡片直接嵌入「连板梯队」Tab。
+- live 抓取失败时确定性 demo 评分兜底，评分逻辑本身完全确定、可解释、可测。
+
+### 新功能：信号胜率回测 + 净值可视化（融合 tickflow 回测可视化 + instock rate_stats）
+- 把 `engine.backtest` 已有的「信号历史胜率回放」能力暴露为端点 `GET /api/backtest?ticker=600519`：
+  - 每个技术信号在历史触发后的 **1 / 5 / 20 日胜率与平均收益**（信号可信度锚点）。
+  - 一段「强多头信号买入、强空头 / 持仓到期卖出」的**演示净值曲线**（含总收益 / 最大回撤 / 夏普），用内联 SVG 直接绘制，无额外图表依赖。
+- 前端新增「信号回测」独立 Tab：总览卡片 + 净值曲线 + 逐信号胜率表；支持输入任意代码回测。
+
+### 工程
+- `API_VERSION` `3.1.0`→`3.2.0`；`pyproject.toml` 版本同步升 `3.2.0`。
+- 新增测试 `tests/test_sector_rotation.py` / `tests/test_longhubang.py` / `tests/test_backtest_runner.py`（demo 模式结构 / 确定性 / 端点断言）。
+- 质量门禁全绿：ruff（lint+format）、mypy、pytest（覆盖率 81%）、bandit、前端 `node --check`。
+
 ## [3.1.0] — 2026-08-17
 
 ### 新功能：连板梯队 · 涨停异动监控（融合 a-stock-data / tickflow-stock-panel）

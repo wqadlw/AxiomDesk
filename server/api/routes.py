@@ -40,7 +40,7 @@ from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.1.0"
+API_VERSION = "3.2.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -441,6 +441,42 @@ def _limit_ladder(date_s: str | None = Query(None, description="可选：指定�
     return {"version": API_VERSION, **LL.build_limit_ladder(date_s=date_s)}
 
 
+def _sector_rotation(top_n: int = Query(30, description="每个维度返回的板块数", ge=1, le=80)):
+    """板块轮动矩阵（融合 tickflow-stock-panel 轮动矩阵 + a-stock-data 板块资金流）。
+
+    返回行业 / 概念板块的今日、5日、10日涨跌幅与主力净流入；demo 或网络失败回退确定性数据。
+    """
+    from ..services import sector_rotation as SR
+
+    return {"version": API_VERSION, **SR.build_sector_rotation(top_n=top_n)}
+
+
+def _longhubang(
+    date_s: str | None = Query(None, description="可选：指定日期 YYYYMMDD（默认当日）"),
+    top_n: int = Query(20, description="返回条数", ge=1, le=50),
+):
+    """龙虎榜游资评分（融合 aiagents-stock longhubang_scoring 体系）。
+
+    best-effort 拉取东财龙虎榜并给出游资参与度综合评分；失败回退确定性演示评分。
+    """
+    from ..services import longhubang as LH
+
+    return {"version": API_VERSION, **LH.build_longhubang(date_s=date_s, top_n=top_n)}
+
+
+def _backtest(
+    ticker: str = Query(..., description="标的代码，如 600519"),
+    days: int = Query(130, description="回测所用 K 线天数", ge=80, le=400),
+):
+    """信号胜率回测 + 净值模拟（融合 tickflow 回测可视化 + instock rate_stats）。
+
+    复用 engine.backtest 的「信号历史胜率回放」并补一段演示净值曲线。
+    """
+    from ..services import backtest_runner as BR
+
+    return {"version": API_VERSION, **BR.run_backtest(ticker=ticker, days=days)}
+
+
 # 注册到两个路由对象
 for _rtr in (router, router_v1):
     _rtr.add_api_route("/health", _health, methods=["GET"])
@@ -478,3 +514,9 @@ for _rtr in (router, router_v1):
     _rtr.add_api_route("/memory/{ticker}/rounds", _mem_rounds, methods=["GET"])
     # ── 市场级：连板梯队 / 涨停异动（融合 a-stock-data / tickflow-stock-panel）──
     _rtr.add_api_route("/limit-ladder", _limit_ladder, methods=["GET"])
+    # ── 市场级：板块轮动矩阵（融合 tickflow 轮动矩阵 + a-stock-data 板块资金流）──
+    _rtr.add_api_route("/sector-rotation", _sector_rotation, methods=["GET"])
+    # ── 市场级：龙虎榜游资评分（融合 aiagents-stock longhubang_scoring）──
+    _rtr.add_api_route("/longhubang", _longhubang, methods=["GET"])
+    # ── 个股级：信号胜率回测 + 净值模拟（融合 tickflow 回测 + instock rate_stats）──
+    _rtr.add_api_route("/backtest", _backtest, methods=["GET"])
