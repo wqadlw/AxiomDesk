@@ -676,7 +676,27 @@ def _dim_scorers():
         s = clamp(roe, 0, 30) / 30 * 4 + clamp(nm, 0, 40) / 40 * 2 + (1 - clamp(dr, 0, 1)) * 2 + fcf
         return clamp(s / 8 * 10)
 
-    def d2(f):  # K线/技术面
+    def d2(f):  # K线/技术面（真实信号驱动，融合 daily_stock_analysis / tickflow）
+        if f.get("tech_kline_driven"):
+            s = 4.0
+            if f.get("tech_ma_bull"):
+                s += 2.5  # 均线多头排列
+            if f.get("tech_above_ma60"):
+                s += 1.5  # 站上中期趋势线
+            if f.get("tech_n_day_high"):
+                s += 1.5  # 创阶段新高
+            if f.get("tech_macd_gold"):
+                s += 1.0  # MACD 金叉
+            vr = f.get("tech_vol_ratio") or 0
+            if vr >= 2.0:
+                s += 1.0  # 量能配合
+            if f.get("tech_is_limit_up"):
+                s += 1.0  # 涨停动能
+            # 超卖/弱势拖累
+            if f.get("is_oversold"):
+                s -= 2.0
+            return clamp(s, 1, 10)
+        # 无 K 线：退回动量/波动率代理
         m = f.get("momentum", 0)
         v = f.get("volatility", 0.3)
         return clamp(5 + m * 12 - (v - 0.3) * 5)

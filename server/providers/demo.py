@@ -1214,3 +1214,43 @@ class DemoDataProvider(DataProvider):
                 }
             )
         return peers[:n]
+
+    def get_kline(self, ticker: str, days: int = 120) -> list[dict]:
+        """离线确定性合成日 K：用 profile 的动量决定整体漂移，保证策略信号自洽且可复现。"""
+        from datetime import date, timedelta
+
+        r = _seed(ticker + "_kline")
+        n = max(30, days)
+        prof = self.get_profile(ticker)
+        mom = float(prof.get("momentum") or 0.0)
+        price = float(prof.get("price") or 10.0)
+        start = price / (1 + mom) if (1 + mom) else price
+        start = max(0.5, start)
+        closes = [start]
+        for _ in range(1, n):
+            drift = (price - start) / n
+            noise = r.uniform(-0.025, 0.025) * start
+            closes.append(max(0.5, closes[-1] + drift + noise))
+        closes[-1] = price  # 末值对齐现价
+        base_vol = max(1.0, price * 1e6 / 12.0)
+        rows: list[dict] = []
+        anchor = date(2024, 6, 1)
+        for i in range(n):
+            o = closes[i - 1] if i > 0 else closes[i] * 0.99
+            c = closes[i]
+            hi = max(o, c) * (1 + r.uniform(0, 0.018))
+            lo = min(o, c) * (1 - r.uniform(0, 0.018))
+            vol = base_vol * r.uniform(0.6, 1.6)
+            d = (anchor + timedelta(days=(n - 1 - i))).isoformat()
+            rows.append(
+                {
+                    "date": d,
+                    "open": round(o, 2),
+                    "high": round(hi, 2),
+                    "low": round(lo, 2),
+                    "close": round(c, 2),
+                    "volume": round(vol, 0),
+                }
+            )
+        rows.reverse()  # 由近到远
+        return rows[-days:]

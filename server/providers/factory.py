@@ -45,6 +45,12 @@ class FallbackProvider(DataProvider):
         except ProviderError:
             return self.fallback.get_peers(ticker, profile, n)
 
+    def get_kline(self, ticker: str, days: int = 120) -> list[dict]:
+        try:
+            return self.primary.get_kline(ticker, days=days)
+        except ProviderError:
+            return self.fallback.get_kline(ticker, days=days)
+
 
 class CachedProvider(DataProvider):
     name = "cached"
@@ -68,6 +74,15 @@ class CachedProvider(DataProvider):
         if hit is not None:
             return hit
         val = self.inner.get_peers(ticker, profile, n)
+        self.cache.set(key, val)
+        return val
+
+    def get_kline(self, ticker: str, days: int = 120) -> list[dict]:
+        key = f"kline:{ticker}:{days}"
+        hit = self.cache.get(key)
+        if hit is not None:
+            return hit
+        val = self.inner.get_kline(ticker, days=days)
         self.cache.set(key, val)
         return val
 

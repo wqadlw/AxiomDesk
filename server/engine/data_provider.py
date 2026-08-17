@@ -9,7 +9,7 @@ from __future__ import annotations
 from ..providers.base import derive_features
 from ..providers.factory import get_provider, reload_provider
 
-__all__ = ["derive_features", "get_peers", "get_profile", "refresh"]
+__all__ = ["derive_features", "get_kline", "get_peers", "get_profile", "refresh"]
 
 
 def get_profile(ticker: str) -> dict:
@@ -19,6 +19,11 @@ def get_profile(ticker: str) -> dict:
 
 def get_peers(ticker: str, p: dict, n: int = 5) -> list[dict]:
     return get_provider().get_peers(ticker, p, n)
+
+
+def get_kline(ticker: str, days: int = 120) -> list[dict]:
+    """返回前复权日 K 线 OHLCV（由近到远）；任何异常由 engine 容错处理。"""
+    return get_provider().get_kline(ticker, days=days)
 
 
 def refresh():

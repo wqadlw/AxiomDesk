@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from ..providers.base import derive_features
 from . import data_provider as DP
+from . import indicators as IND
 from . import investors as INV
 from . import narrative as NAR
 from . import strategy as STRAT
+from . import strategy_signals as SIG
 from . import valuation as VAL
 
 
@@ -273,9 +275,72 @@ def great_divide(results: list[dict], features: dict, val: dict, trap: dict) -> 
 
 
 # ───────────────────────── 总入口 ─────────────────────────
+def _safe_kline(ticker: str, days: int = 120) -> list[dict]:
+    """容错取 K 线：任何异常都返回空列表，交由下游降级。"""
+    try:
+        return DP.get_kline(ticker, days=days)
+    except Exception:
+        return []
+
+
+def _inject_tech(features: dict, tech: dict) -> None:
+    """把技术面派生字段并入 features，供 d2(K线技术) 等维度真实评分。"""
+    features["tech_kline_driven"] = bool(tech.get("valid"))
+    if not tech.get("valid"):
+        return
+    close = tech.get("last_close") or 0
+    ma5, ma20, ma60 = tech.get("ma5_last"), tech.get("ma20_last"), tech.get("ma60_last")
+    features["tech_ma_bull"] = bool(ma5 and ma20 and ma5 > ma20)
+    features["tech_above_ma60"] = bool(close and ma60 and close > ma60)
+    features["tech_ma_alignment"] = int((ma5 or 0) > (ma20 or 0)) + int((ma20 or 0) > (ma60 or 0))
+    highs = tech.get("high") or []
+    n_high = max(highs[-60:]) if len(highs) >= 60 else (max(highs) if highs else 0)
+    features["tech_n_day_high"] = bool(close and n_high > 0 and close >= n_high * 0.995)
+    features["tech_vol_ratio"] = tech.get("vol_ratio_last") or 0
+    macd = tech.get("macd") or {}
+    dif, dea = macd.get("dif"), macd.get("dea")
+    features["tech_macd_gold"] = bool(dif and dea and len(dif) >= 2 and dif[-1] > dea[-1] and dif[-2] <= dea[-2])
+    features["tech_boards"] = tech.get("boards") or 0
+    features["tech_is_limit_up"] = bool(tech.get("is_limit_up"))
+    features["tech_poc"] = tech.get("poc")
+    # 最近支撑/压力（POC 与枢轴点中贴近现价者）
+    sup: list[float] = []
+    res: list[float] = []
+    for lv in ([tech.get("poc")] if tech.get("poc") else []) + list((tech.get("pivot") or {}).values()):
+        if not lv:
+            continue
+        (sup if lv < close else res).append(lv)
+    features["tech_nearest_support"] = min(sup) if sup else None
+    features["tech_nearest_resistance"] = min(res) if res else None
+
+
+def _key_levels(tech: dict) -> dict:
+    """紧凑的关键价位摘要（融合 tickflow levels.py 的 9 类价位精华），供前端/叙述引用。"""
+    if not tech.get("valid"):
+        return {}
+    out: dict[str, object] = {}
+    if tech.get("poc"):
+        out["poc"] = tech["poc"]
+    if tech.get("pivot"):
+        out["pivot"] = tech["pivot"]
+    if tech.get("fib"):
+        out["fib"] = tech["fib"]
+    if tech.get("gaps"):
+        out["gaps"] = tech["gaps"]
+    if tech.get("round_numbers"):
+        out["round_numbers"] = tech["round_numbers"][:4]
+    if tech.get("boards") is not None:
+        out["boards"] = tech["boards"]
+    return out
+
+
 def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bool = True) -> dict:
     profile = DP.get_profile(ticker)
     features = derive_features(profile)
+    # ── K 线增强：技术面真实信号（融合 daily_stock_analysis / tickflow）──
+    kline = _safe_kline(ticker)
+    tech = IND.compute_all(kline) if kline else {"valid": False}
+    _inject_tech(features, tech)
     dims = INV.score_dimensions(features)
     overall = overall_score(dims)
     verdict = overall_to_verdict(overall)
@@ -289,7 +354,8 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
 
     trap = trap_detect(features, keyword_boost)
     divide = great_divide(results, features, val, trap)
-    strategy = STRAT.build_strategy_map(features)
+    signals = SIG.detect_all(kline, tech, features) if kline else []
+    strategy = STRAT.build_strategy_map(features, kline, signals)
 
     meta = {
         "ticker": ticker,
@@ -371,6 +437,8 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
         "trap": trap,
         "great_divide": divide,
         "strategy": strategy,
+        "signals": signals,
+        "key_levels": _key_levels(tech),
         "depth": depth,
         "data_note": data_note,
         "data_disclaimer": data_disclaimer,

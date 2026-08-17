@@ -66,9 +66,10 @@ class TencentDataProvider(DataProvider):
             "mcap_yi": to_float(f[45]) or to_float(f[44]),
         }
 
-    # ── K线 → 动量 / 波动率 ──
-    def _kline(self, prefix: str, code: str):
-        url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={prefix}{code},day,,,60,qfq"
+    # ── K线 → 动量 / 波动率 / OHLCV ──
+    def _kline_rows(self, prefix: str, code: str, days: int = 120) -> list[dict]:
+        """抓取腾讯前复权日 K，返回由近到远的 OHLCV 列表。失败返回空列表。"""
+        url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={prefix}{code},day,,,{days},qfq"
         try:
             import json
 
@@ -76,20 +77,53 @@ class TencentDataProvider(DataProvider):
             d = json.loads(txt)
             node = d.get("data", {}).get(f"{prefix}{code}", {})
             arr = node.get("qfqday") or node.get("day") or []
-            if len(arr) < 2:
-                return 0.0, 0.3
-            closes = [to_float(r[2]) for r in arr if len(r) > 2]
-            momentum = (closes[-1] - closes[0]) / closes[0] if closes[0] else 0.0
-            rets = [closes[i] / closes[i - 1] - 1 for i in range(1, len(closes)) if closes[i - 1]]
-            if len(rets) >= 2:
-                mean = sum(rets) / len(rets)
-                var = sum((x - mean) ** 2 for x in rets) / (len(rets) - 1)
-                vol = math.sqrt(var) * math.sqrt(252)  # 年化
-            else:
-                vol = 0.3
-            return momentum, min(max(vol, 0.05), 1.5)
+            rows: list[dict] = []
+            for r in arr:
+                if len(r) < 6:
+                    continue
+                c = to_float(r[2])
+                if not c:
+                    continue
+                rows.append(
+                    {
+                        "date": str(r[0]),
+                        "open": to_float(r[1]),
+                        "high": to_float(r[3]),
+                        "low": to_float(r[4]),
+                        "close": c,
+                        "volume": to_float(r[5]),
+                    }
+                )
+            # 接口返回由远到近，统一翻转为由近到远，与 akshare/demo 一致
+            rows.reverse()
+            return rows
         except Exception:
+            return []
+
+    def _kline(self, prefix: str, code: str):
+        rows = self._kline_rows(prefix, code)
+        if len(rows) < 2:
             return 0.0, 0.3
+        # _kline_rows 已翻转为由近到远，这里翻转回由远到近（旧→新）再算动量/波动率
+        old_to_new = rows[::-1]
+        closes = [r["close"] for r in old_to_new]
+        momentum = (closes[-1] - closes[0]) / closes[0] if closes[0] else 0.0
+        rets = [closes[i] / closes[i - 1] - 1 for i in range(1, len(closes)) if closes[i - 1]]
+        if len(rets) >= 2:
+            mean = sum(rets) / len(rets)
+            var = sum((x - mean) ** 2 for x in rets) / (len(rets) - 1)
+            vol = math.sqrt(var) * math.sqrt(252)  # 年化
+        else:
+            vol = 0.3
+        return momentum, min(max(vol, 0.05), 1.5)
+
+    def get_kline(self, ticker: str, days: int = 120) -> list[dict]:
+        info = secid_for(ticker)
+        if info is None:
+            return []
+        prefix, _ = info
+        code = ticker[-6:] if len(ticker) >= 6 else ticker
+        return self._kline_rows(prefix, code, days)
 
     def get_profile(self, ticker: str) -> dict:
         info = secid_for(ticker)

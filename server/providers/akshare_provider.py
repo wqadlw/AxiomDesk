@@ -227,3 +227,45 @@ class AkShareDataProvider(DataProvider):
     def get_peers(self, ticker: str, profile: dict, n: int = 5) -> list[dict]:
         # 实时同行可比暂由 demo fallback 补全（避免引入过多易变接口）
         raise ProviderError("akshare 暂未实现 peers，交由 fallback 补全")
+
+    def get_kline(self, ticker: str, days: int = 120) -> list[dict]:
+        """前复权日 K（akshare 免费 stock_zh_a_hist）。无 akshare/异常返回空列表。"""
+        try:
+            import akshare as ak
+        except Exception:
+            return []
+        code = ticker.strip().upper().zfill(6) if ticker.strip().isdigit() else ticker.strip().upper()
+        # akshare 需要纯 6 位数字代码
+        if not code.isdigit():
+            info = None
+            try:
+                from .http_base import secid_for
+
+                info = secid_for(ticker)
+            except Exception:
+                info = None
+            if info:
+                code = ticker[-6:] if len(ticker) >= 6 else ticker
+        try:
+            df = ak.stock_zh_a_hist(symbol=code, period="daily", adjust="qfq")
+            if df is None or getattr(df, "empty", True):
+                return []
+            rows: list[dict] = []
+            for _, r in df.iterrows():
+                c = _to_float(r.get("收盘"))
+                if not c:
+                    continue
+                rows.append(
+                    {
+                        "date": str(r.get("日期"))[:10],
+                        "open": _to_float(r.get("开盘")),
+                        "high": _to_float(r.get("最高")),
+                        "low": _to_float(r.get("最低")),
+                        "close": c,
+                        "volume": _to_float(r.get("成交量")),
+                    }
+                )
+            rows.reverse()  # 由近到远
+            return rows[-days:] if days else rows
+        except Exception:
+            return []

@@ -212,10 +212,30 @@ def _compact_context(result: dict) -> str:
 
     strat = result.get("strategy") or {}
     if strat:
+        kd = "·K线驱动" if strat.get("kline_driven") else "·特征代理"
         lines.append(
-            "【策略图谱】推荐风格 %s(适配度%s/10)"
-            % (strat.get("recommended", "?"), strat.get("recommended_score", "?"))
+            "【策略图谱】推荐风格 %s(适配度%s/10)%s"
+            % (strat.get("recommended", "?"), strat.get("recommended_score", "?"), kd)
         )
+        ev = strat.get("top_evidence") or []
+        for e in ev:
+            lines.append("  - 信号：%s" % e)
+
+    # 关键价位（融合 tickflow levels 的 9 类价位精华）
+    kl = result.get("key_levels") or {}
+    if kl:
+        parts = []
+        if kl.get("poc"):
+            parts.append("成交密集区(POC)=%s" % kl["poc"])
+        if kl.get("pivot"):
+            p = kl["pivot"]
+            parts.append("枢轴 R1/S1=%s/%s" % (p.get("R1"), p.get("S1")))
+        if kl.get("fib"):
+            parts.append("Fib回撤=%s" % "/".join(str(x) for x in kl["fib"]))
+        if kl.get("boards"):
+            parts.append("连板高度=%s板" % kl["boards"])
+        if parts:
+            lines.append("【关键价位】" + " · ".join(parts))
 
     # ── 评委声纹发言（第一人称、带数字、带各自方法论）──
     features = _features_from_meta(meta)

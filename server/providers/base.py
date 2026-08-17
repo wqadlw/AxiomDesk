@@ -33,6 +33,14 @@ class DataProvider(ABC):
     @abstractmethod
     def get_peers(self, ticker: str, profile: dict, n: int = 5) -> list[dict]: ...
 
+    def get_kline(self, ticker: str, days: int = 120) -> list[dict]:
+        """返回前复权日 K 线 OHLCV 列表（由近到远），每条 {date,open,high,low,close,volume}。
+
+        默认实现返回空列表：未实现该接口的源（如某些可选源）不会中断分析，
+        engine 会自动降级为「特征代理」模式。具体源（腾讯/akshare/demo）各自覆盖。
+        """
+        return []
+
     def is_available(self) -> bool:
         return True
 
