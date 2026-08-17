@@ -40,9 +40,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/axiomdesk"
-Repository = "https://github.com/your-org/axiomdesk"
-Documentation = "https://github.com/your-org/axiomdesk/blob/main/README.md"
+Homepage = "https://github.com/wqadlw/AxiomDesk"
+Repository = "https://github.com/wqadlw/AxiomDesk"
+Documentation = "https://github.com/wqadlw/AxiomDesk/blob/main/README.md"
 "Methodology (UZI-Skill)" = "https://github.com/FloatFu-true/UZI-Skill"
 
 [project.scripts]

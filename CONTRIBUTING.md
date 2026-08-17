@@ -16,8 +16,8 @@
 
 ```bash
 # 1. Fork 并克隆你的副本
-git clone https://github.com/<you>/axiomdesk.git
-cd axiomdesk
+git clone https://github.com/wqadlw/AxiomDesk.git
+cd AxiomDesk
 
 # 2. 创建虚拟环境（推荐）
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate

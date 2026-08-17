@@ -37,7 +37,7 @@ Wiki 编辑、Issue 或其他贡献采取恰当纠正措施（包括删除、编
 ## 执行
 
 可向上级维护者举报不当、骚扰或不可接受的行为：
-**axiomdesk-security@example.com**（占位，详见 [SECURITY.md](SECURITY.md)）。
+在 GitHub 仓库的 **Security → Report a vulnerability** 提交，或 **直接 @wqadlw**（详见 [SECURITY.md](SECURITY.md)）。
 所有投诉将被及时、公平地审查与调查。维护者将尊重举报者的隐私。
 
 ## 署名

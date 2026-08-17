@@ -13,8 +13,8 @@
 
 请将安全问题以私密方式报告给维护者：
 
-- 邮箱：axiomdesk-security@example.com （占位地址，请替换为项目实际安全联系邮箱）
-- 或在 GitHub 上使用仓库的 **Security → Report a vulnerability** 私有提交（如已启用）
+- **推荐**：在 GitHub 仓库的 **Security → Report a vulnerability** 提交私有漏洞报告（已启用）。
+- 或在仓库中创建 **私密 Issue / 直接 @wqadlw**（请避免在公开 Issue 中泄露细节）。
 
 请在报告中尽量包含：
 
