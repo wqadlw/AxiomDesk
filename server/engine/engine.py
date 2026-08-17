@@ -6,7 +6,9 @@ analyze(ticker, keyword_boost=0, depth="deep") -> report(dict)
 
 from __future__ import annotations
 
+from ..config_store import effective_data_source
 from ..providers.base import derive_features
+from . import backtest as BT
 from . import data_provider as DP
 from . import indicators as IND
 from . import investors as INV
@@ -14,6 +16,7 @@ from . import narrative as NAR
 from . import strategy as STRAT
 from . import strategy_signals as SIG
 from . import valuation as VAL
+from . import youzi as YZ
 
 
 # ───────────────────────── 综合评分 ─────────────────────────
@@ -303,6 +306,29 @@ def _inject_tech(features: dict, tech: dict) -> None:
     features["tech_boards"] = tech.get("boards") or 0
     features["tech_is_limit_up"] = bool(tech.get("is_limit_up"))
     features["tech_poc"] = tech.get("poc")
+    # 指标补充（instock / Sequoia-X 融合）
+    cyq = tech.get("cyq") or {}
+    if cyq.get("valid"):
+        features["tech_cyq_profit"] = cyq.get("profit_ratio")
+        features["tech_cyq_avg_cost"] = cyq.get("avg_cost")
+        features["tech_cyq_conc90"] = cyq.get("concentration_90")
+    rps_res = tech.get("rps") or {}
+    if rps_res.get("valid"):
+        features["tech_rps_score"] = rps_res.get("score")
+        features["tech_rps_excess"] = rps_res.get("excess")
+    kdj_k = tech.get("kdj_k_last")
+    kdj_j = tech.get("kdj_j_last")
+    features["tech_kdj_gold"] = bool(
+        kdj_k is not None and kdj_j is not None and kdj_k is not None and kdj_k > 20 and kdj_j > 0
+    )
+    rsi_last = tech.get("rsi_last")
+    features["tech_rsi_oversold"] = bool(rsi_last is not None and rsi_last < 30)
+    features["tech_rsi_overbought"] = bool(rsi_last is not None and rsi_last > 80)
+    cci_last = tech.get("cci_last")
+    features["tech_cci_extreme"] = bool(cci_last is not None and abs(cci_last) > 100)
+    boll_up, boll_lo = tech.get("boll_upper_last"), tech.get("boll_lower_last")
+    if boll_up and boll_lo:
+        features["tech_boll_position"] = (close - boll_lo) / (boll_up - boll_lo) if boll_up > boll_lo else 0.5
     # 最近支撑/压力（POC 与枢轴点中贴近现价者）
     sup: list[float] = []
     res: list[float] = []
@@ -312,6 +338,23 @@ def _inject_tech(features: dict, tech: dict) -> None:
         (sup if lv < close else res).append(lv)
     features["tech_nearest_support"] = min(sup) if sup else None
     features["tech_nearest_resistance"] = min(res) if res else None
+
+
+def _inject_market(features: dict, mkt: dict) -> None:
+    """把全市场情绪快照并入 features，供情绪周期 / 龙头信号 / 叙述层使用真实数据。"""
+    emo = mkt.get("emotion") or {}
+    lp = mkt.get("limit_pool") or {}
+    idx = (mkt.get("index") or {}).get("sh000001") or {}
+    flows = mkt.get("sector_flow") or []
+    features["mkt_source"] = str(mkt.get("source", "demo"))
+    features["mkt_emotion_stage"] = str(emo.get("stage", "平稳"))
+    features["mkt_emotion_score"] = float(emo.get("score", 0.45))
+    features["mkt_emotion_side"] = str(emo.get("side", "neutral"))
+    features["mkt_limit_count"] = int(lp.get("count", 0))
+    features["mkt_max_boards"] = int(lp.get("max_boards", 0))
+    features["mkt_break_rate"] = float(mkt.get("break_rate", 0.0))
+    features["mkt_index_change"] = float(idx.get("change_pct", 0.0))
+    features["mkt_sector_top"] = [str(f.get("name", "")) for f in flows[:3]]
 
 
 def _key_levels(tech: dict) -> dict:
@@ -337,9 +380,12 @@ def _key_levels(tech: dict) -> dict:
 def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bool = True) -> dict:
     profile = DP.get_profile(ticker)
     features = derive_features(profile)
+    # ── 市场情绪快照：涨停池/炸板率/指数/板块资金（真实市场数据）──
+    mkt = DP.get_market_context()
+    _inject_market(features, mkt)
     # ── K 线增强：技术面真实信号（融合 daily_stock_analysis / tickflow）──
     kline = _safe_kline(ticker)
-    tech = IND.compute_all(kline) if kline else {"valid": False}
+    tech = IND.compute_all(kline, index_kline=mkt.get("index_kline")) if kline else {"valid": False}
     _inject_tech(features, tech)
     dims = INV.score_dimensions(features)
     overall = overall_score(dims)
@@ -355,7 +401,13 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
     trap = trap_detect(features, keyword_boost)
     divide = great_divide(results, features, val, trap)
     signals = SIG.detect_all(kline, tech, features) if kline else []
-    strategy = STRAT.build_strategy_map(features, kline, signals)
+    # 信号胜率回测（实证可信度锚点，instock rate_stats 思想）
+    backtest_res = BT.backtest_fired(signals, kline) if kline else []
+    strategy = STRAT.build_strategy_map(features, kline, signals, backtest_res)
+
+    # ── 游资专精分析（确定性双轨评分 · 融合 aiagents-stock 龙虎榜体系）──
+    youzi_res = YZ.analyze(features)
+    yz_zone = YZ.youzi_buy_zone(features, float(profile.get("price") or 0))
 
     meta = {
         "ticker": ticker,
@@ -439,6 +491,8 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
         "strategy": strategy,
         "signals": signals,
         "key_levels": _key_levels(tech),
+        "market": mkt,
+        "youzi": youzi_res,
         "depth": depth,
         "data_note": data_note,
         "data_disclaimer": data_disclaimer,
@@ -446,6 +500,18 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
 
     # 判断层：用大模型（或离线模板）补齐维度评语/评委洞察/多空辩论/核心结论/风险/买入区间
     if use_ai:
+        # 跨会话记忆召回（jcp-master 按股票隔离记忆）：真实数据模式注入历史研判上下文，
+        # demo 模式跳过（避免合成数据污染真实记忆库）
+        from ..services import memory as MEM  # 延迟导入：services→engine 存在依赖环
+
+        mem_ctx = ""
+        if effective_data_source() != "demo":
+            try:
+                mem_ctx = MEM.recall_context(ticker)
+            except Exception:
+                mem_ctx = ""
+        result["_memory_context"] = mem_ctx
+        result["_youzi_zone"] = yz_zone
         try:
             result["ai"] = NAR.generate_narrative(result)
         except Exception:
@@ -453,5 +519,14 @@ def analyze(ticker: str, keyword_boost: int = 0, depth: str = "deep", use_ai: bo
             ai = NAR.TemplateProvider().build_template(result)
             ai["_source"] = "template"
             result["ai"] = ai
+        # 分析完成后自动沉淀关键结论/事实/观点（跨会话记忆）
+        if mem_ctx is not None and effective_data_source() != "demo":
+            try:
+                MEM.remember_analysis(ticker, result)
+            except Exception:
+                pass
+        # 内部提示字段不入对外结构
+        result.pop("_memory_context", None)
+        result.pop("_youzi_zone", None)
 
     return result

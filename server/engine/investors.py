@@ -676,7 +676,7 @@ def _dim_scorers():
         s = clamp(roe, 0, 30) / 30 * 4 + clamp(nm, 0, 40) / 40 * 2 + (1 - clamp(dr, 0, 1)) * 2 + fcf
         return clamp(s / 8 * 10)
 
-    def d2(f):  # K线/技术面（真实信号驱动，融合 daily_stock_analysis / tickflow）
+    def d2(f):  # K线/技术面（真实信号驱动，融合 daily_stock_analysis / tickflow / instock）
         if f.get("tech_kline_driven"):
             s = 4.0
             if f.get("tech_ma_bull"):
@@ -692,6 +692,19 @@ def _dim_scorers():
                 s += 1.0  # 量能配合
             if f.get("tech_is_limit_up"):
                 s += 1.0  # 涨停动能
+            # 指标补充（instock / Sequoia-X 融合）：筹码/RSI/KDJ/RPS
+            cyq_profit = f.get("tech_cyq_profit")
+            if cyq_profit is not None:
+                s += 0.8 if cyq_profit >= 0.6 else (0.4 if cyq_profit >= 0.4 else 0.0)  # 获利盘健康度
+            rps_score = f.get("tech_rps_score")
+            if rps_score is not None:
+                s += 1.0 if rps_score >= 0.8 else (0.5 if rps_score >= 0.6 else 0.0)  # 相对强度
+            if f.get("tech_rsi_oversold"):
+                s += 0.8  # 超卖企稳（反弹候选）
+            elif f.get("tech_rsi_overbought"):
+                s -= 1.0  # 超买回落风险
+            if f.get("tech_kdj_gold"):
+                s += 0.5  # KDJ 低位金叉
             # 超卖/弱势拖累
             if f.get("is_oversold"):
                 s -= 2.0

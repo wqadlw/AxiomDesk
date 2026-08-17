@@ -1,7 +1,10 @@
-# UZI Terminal · 中文个股深度分析终端
+# AxiomDesk · 公理级投研终端
 
-> 一个把 **UZI-Skill 个股深度分析方法论** 落地为可运行、可部署、可开源的投研终端。
-> 实时 A 股 / 港股行情直连 + 66 位投资大师评审团 + 三模型估值 + 杀猪盘检测 + AI 研判层（DeepSeek 可选）+ 彭博风可视化前端。
+> 一个把 **UZI-Skill 个股深度分析方法论** 落地为可运行、可部署、可开源的投研终端，
+> 并在其之上深度融合 **市场情绪 → 策略指标 → 执行计划 → 智能记忆** 四层工程能力。
+>
+> 实时 A 股 / 港股行情直连 + 66 位投资大师评审团 + 三模型估值 + 杀猪盘检测 + 游资确定性评分
+> + 信号胜率回测 + 自选监控预警 + 跨会话记忆 + AI 研判层（DeepSeek 可选）+ 彭博风可视化前端。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org)
@@ -11,13 +14,54 @@
 
 ---
 
+## 🧭 四层能力矩阵
+
+```mermaid
+flowchart TB
+    subgraph L1["① 市场情绪层 · 数据通路"]
+        A1[涨停池 / 炸板率]
+        A2[连板高度 / 板块资金流]
+        A3[上证指数日K → RPS 基准]
+        A4[TTL 缓存 + demo 确定性兜底]
+    end
+    subgraph L2["② 策略指标层 · 形态与实证"]
+        B1[18 个实战信号<br/>高紧旗形 / 停机坪 / 涨停洗盘 / RPS突破…]
+        B2[9 类指标<br/>KDJ / BOLL / RSI / CCI / OBV / CYQ筹码 / RPS…]
+        B3[信号胜率回测<br/>1/5/20 日胜率与均收益]
+        B4[策略图谱 · 六风格适配度]
+    end
+    subgraph L3["③ 执行层 · 计划与风控"]
+        C1[自选股 + 实时盈亏快照]
+        C2[多情景操作计划<br/>主攻 / 回调低吸 / 破位离场]
+        C3[盘中预警 · 30 分钟去重]
+        C4[止损止盈 / 入场区 / 异动 / 突破]
+    end
+    subgraph L4["④ 智能层 · 记忆与双轨校验"]
+        D1[游资确定性评分<br/>席位/净买/机构/主力五段打分]
+        D2[跨会话记忆<br/>事实/观点/决策按股票隔离]
+        D3[辩论主持人收束<br/>moderator_verdict 条件化结论]
+        D4[AI 研判 + 双轨校验锚点]
+    end
+    L1 --> L2 --> L3 --> L4
+```
+
+**四层一句话**：先看全市场温度（L1），再找个股形态与实证胜率（L2），
+然后把结论变成可执行的自选 / 计划 / 预警（L3），最后用记忆与游资评分给 AI 研判加上确定性锚点（L4）。
+
+---
+
 ## ✨ 特性
 
 - **真实多源数据**：零依赖直连腾讯 / 新浪财经实时行情（无需安装重型库即可跑）；可选接入东方财富、akshare、efinance、tushare、baostock，失败自动降级到内置确定性 `demo` 数据，**应用永不崩**。
 - **可配置数据源**：内置「数据源配置」页面，可视化启停 / 排序 / 超时 / 代理 / token，一键「测试连接」回传样本，保存即重建数据链路。
 - **方法论忠实还原**：66 位投资大师（9 大流派）× 20 维加权评分、DCF / Comps / LBO 三模型估值、8 信号杀猪盘检测、多空大分歧辩论——均源自 [UZI-Skill](https://github.com/wbh604/UZI-Skill) 的公开方法论（见 `docs/METHODOLOGY.md`）。
-- **AI 研判层**：接入真实 DeepSeek（OpenAI 兼容协议，零额外 SDK）；无 Key 时自动降级为离线「模板研判」，结论含数字引用与「但是」结构，严格遵循方法论的质量门纪律。
-- **彭博风终端**：原生 JS / CSS 前端（无构建步骤），红涨绿跌（中国习惯），9 个 Tab 全景呈现分析结论。
+- **全市场情绪快照**：涨停池 / 连板高度 / 炸板率 / 板块资金主线 / 上证指数，实时注入「情绪周期」信号与叙事层（离线自动合成，确定性可测）。
+- **实证策略信号**：18 个实战形态信号（含 KDJ / BOLL / RSI / CCI / OBV / 筹码分布 CYQ / RPS 相对强度），每个信号附 1/5/20 日**历史胜率回测**，标注「实证可信 / 实证偏弱」。
+- **游资专精分析**：龙虎榜席位 / 净买 / 机构 / 主力五段确定性打分（0~100），作为 AI 研判的「第二轨」校验锚点；游资派买入区间由 POC 与净买额真实计算。
+- **执行层闭环**：自选股实时盈亏 → 多情景操作计划（入场区 / 止损 / 目标 / RR / 仓位）→ 盘中 5 类事件预警（30 分钟去重），配「自选·监控」前端面板。
+- **跨会话记忆**：每只股票独立沉淀「事实 / 观点 / 决策」记忆（SQLite），下次分析自动回填给 AI 研判层，保持决策连续性。
+- **AI 研判层**：接入真实 DeepSeek（OpenAI 兼容协议，零额外 SDK）；无 Key 时自动降级为离线「模板研判」，结论含数字引用与「但是」结构，并新增**辩论主持人收束**（条件化执行结论）。
+- **彭博风终端**：原生 JS / CSS 前端（无构建步骤），红涨绿跌（中国习惯），11 个 Tab 全景呈现分析结论。
 - **工程化就绪**：FastAPI 版本化 API（`/api` + `/api/v1`）、结构化日志与 Request-ID、异步任务 + SQLite 历史、横向对比、Docker / Compose / Makefile / CI。
 
 ---
@@ -27,34 +71,40 @@
 ```mermaid
 flowchart LR
     subgraph Browser["浏览器 (web/ 原生 JS/CSS · 红涨绿跌)"]
-        UI[彭博风终端 · 9 Tab]
+        UI[彭博风终端 · 11 Tab · 含「自选·监控」]
     end
     subgraph API["FastAPI 应用 (server/app.py)"]
         R[api/routes.py<br/>版本化路由 · 统一异常 · CORS · Request-ID]
         J[jobs.py<br/>异步任务 + SQLite 历史]
         C[config_store.py<br/>配置持久化 · 热更新]
+        S[services/<br/>自选 · 计划 · 预警 · 记忆]
     end
     subgraph Engine["确定性分析引擎 (engine/)"]
         E1[评分 · 20 维加权]
         E2[估值 · DCF/Comps/LBO]
         E3[66 评委评审团]
-        E4[8 信号杀猪盘检测]
-        E5[多空大分歧 + AI 叙事]
+        E4[8 信号杀猪盘检测 + 市场情绪]
+        E5[18 信号 + 回测 + 策略图谱]
+        E6[游资确定性评分 + 多空大分歧]
     end
     subgraph Data["数据源 (providers/ · Failover + 缓存)"]
         P1[腾讯 / 新浪 零依赖直连]
         P2[东方财富 / akshare / tushare（可选）]
         P3[内置 demo 确定性兜底]
+        P4[全市场情绪快照<br/>涨停池 / 板块资金 / 指数]
     end
     subgraph LLM["研判层 (llm/)"]
         L1[DeepSeek 实时研判]
         L2[离线模板研判（降级）]
+        L3[跨会话记忆回填 + 主持人收束]
     end
 
     UI -- "REST /api,/api/v1" --> R
     R --> J & C & Engine
     Engine --> Data
     Engine --> LLM
+    R --> S
+    S --> Engine
     Data -. 失败自动降级 .-> P3
     LLM -. 无 Key 降级 .-> L2
 ```
@@ -76,7 +126,7 @@ pip install -e .
 
 # 2. 启动（默认 127.0.0.1:8137）
 python -m uvicorn server.app:app --host 0.0.0.0 --port 8137
-# 或： python -m server.app   /   uzi-terminal
+# 或： python -m server.app   /   axiomdesk
 
 # 3. 打开浏览器
 #    http://127.0.0.1:8137/
@@ -153,6 +203,11 @@ start.bat         # Windows 双击
 | GET/PUT | `/api/config` | 读取 / 更新数据源与 LLM 配置 |
 | POST | `/api/config/test` | 测试某数据源连通性（回传样本） |
 | POST | `/api/config/reset` | 恢复默认配置 |
+| GET/POST | `/api/watchlist` · `/api/watchlist/{ticker}` | 自选股清单 / 增删（实时盈亏快照） |
+| GET  | `/api/events?unacknowledged=true` · POST `/api/events/{id}/ack` · `/api/events/clear` | 盘中预警事件 / 确认 / 清空 |
+| POST | `/api/monitor/check` | 触发一轮盘中预警检查（30 分钟去重） |
+| GET/POST/DELETE | `/api/plans` · `/api/plans/{ticker}` | 多情景操作计划：查看 / 生成 / 删除 |
+| GET/POST | `/api/memory/{ticker}` · `/summary` · `/rounds` | 跨会话记忆：召回 / 写入 / 摘要 / 轮次 |
 
 完整请求 / 响应示例见 [docs/API.md](docs/API.md)。
 
@@ -212,7 +267,9 @@ ruff format --check server/ tests/
 
 其分析方法论（投资评审团、估值模型、陷阱信号、评分维度）**衍生自并受启发于**
 [**UZI-Skill**](https://github.com/wbh604/UZI-Skill)（MIT，作者 **FloatFu-true**）。
-本仓库为独立重新实现，未逐字并入 UZI-Skill 源码。署名详情见 [NOTICE](NOTICE)。
+本仓库为独立重新实现，未逐字并入 UZI-Skill 源码；同时融合了多个开源社区项目的工程思想
+（市场情绪数据通路、筹码分布与 RPS 指标、自选监控与多情景计划、跨会话记忆、游资确定性评分等），
+完整署名见 [NOTICE](NOTICE)。
 
 ---
 
@@ -226,8 +283,13 @@ ruff format --check server/ tests/
 
 ## 🗺️ Roadmap
 
-- [ ] 更多零依赖实时源（网易财经 / 雪球 / 乐咕乐股，需验证可达性）
+- [x] 多源数据通路（腾讯 / 新浪零依赖直连 + 可选包 + demo 兜底）
+- [x] 全市场情绪快照（涨停池 / 板块资金 / 指数）
+- [x] 指标补齐（KDJ / BOLL / RSI / CCI / OBV / CYQ / RPS）
+- [x] 信号胜率回测 + 策略图谱
+- [x] 自选股 / 操作计划 / 盘中预警
+- [x] 跨会话记忆 + 游资确定性评分
 - [ ] 财务数据真实化（接入财报接口补全营收 / 净利 / ROE 等）
-- [ ] 自选股与监控告警
 - [ ] 报告导出（PDF / Markdown）
+- [ ] 报告对比快照（同一标的跨日 diff）
 - [ ] 英文界面

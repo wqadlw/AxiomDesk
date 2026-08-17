@@ -124,6 +124,17 @@ class TemplateProvider(LLMProvider):
             "technical": _zone(0.95, "技术派：关键均线/支撑位附近"),
             "youzi": _zone(1.05, "游资派：题材联动时的短线切入位"),
         }
+        # 游资派买入区间：优先用规则引擎算出的确定性参考位（aiagents-stock 融合）
+        yz_zone = result.get("_youzi_zone")
+        if yz_zone and yz_zone.get("price"):
+            buy_zones["youzi"] = {"price": yz_zone["price"], "rationale": yz_zone["rationale"]}
+
+        moderator_verdict = (
+            f"辩论收束：多方由 {bull_name} 领衔、空方由 {bear_name} 压阵，"
+            f"综合评分 {overall}/10、公允价相对现价 {_fmt_pct(upside)}、杀猪盘评级 {trap.get('trap_level', '—')}。"
+            f"若现价守住关键支撑且量能配合，可按「{verdict}」逻辑小仓分步跟进；"
+            f"若跌破支撑或榜单评级恶化，则无条件离场观望、不与趋势对抗。{_DIM_NOTE}"
+        )
 
         risks = [
             f"估值风险：公允价相对现价 {_fmt_pct(upside)}，{'已透支乐观预期' if upside < 0 else '上行空间有限'}。",
@@ -144,4 +155,5 @@ class TemplateProvider(LLMProvider):
             "risks": risks,
             "buy_zones": buy_zones,
             "valuation_interpretation": valuation_interpretation,
+            "moderator_verdict": moderator_verdict,
         }

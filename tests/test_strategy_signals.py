@@ -149,7 +149,7 @@ def test_detect_all_structure_and_keys():
     tech = IND.compute_all(kline)
     feats = {"momentum": 0.4, "is_hot_theme": True}
     sigs = SIG.detect_all(kline, tech, feats)
-    assert len(sigs) == 12
+    assert len(sigs) == 18  # v3.0: 12 个基础信号 + 6 个实战信号（RPS/涨停洗盘等）
     for s in sigs:
         assert {"id", "name", "fired", "strength", "side", "evidence"}.issubset(s.keys())
         assert 0.0 <= s["strength"] <= 1.0
@@ -157,7 +157,7 @@ def test_detect_all_structure_and_keys():
 
 def test_detect_all_no_kline_returns_placeholders():
     sigs = SIG.detect_all([], {"valid": False}, {})
-    assert len(sigs) == 12
+    assert len(sigs) == 18
     assert all(not s["fired"] for s in sigs)
 
 
@@ -197,7 +197,7 @@ def test_engine_analyze_includes_kline_strategy():
     res = analyze("600519", use_ai=False)
     strat = res["strategy"]
     assert strat["kline_driven"] is True
-    assert len(res.get("signals", [])) == 12
+    assert len(res.get("signals", [])) == 18
     # d2(K线技术) 维度应被真实技术面驱动
     d2 = next((d for d in res["dimensions"] if d["key"] == "2_kline"), None)
     assert d2 is not None

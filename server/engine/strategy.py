@@ -23,9 +23,19 @@ SIGNAL_TO_CATEGORY: dict[str, list[str]] = {
         "dragon_head",
         "limit_up_momentum",
         "consecutive_limit_ups",
+        "rps_breakout",
+        "high_tight_flag",
     ],
-    "breakout": ["trend_breakout", "volume_price_surge", "macd_golden"],
-    "mean_reversion": ["oversold_reversal", "pullback_to_support"],
+    "breakout": [
+        "trend_breakout",
+        "volume_price_surge",
+        "macd_golden",
+        "rps_breakout",
+        "runway_pattern",
+        "high_tight_flag",
+        "limit_up_shakeout",
+    ],
+    "mean_reversion": ["oversold_reversal", "pullback_to_support", "cyq_oversold", "low_atr_base"],
     "structure": ["chan_theory", "wave_theory", "emotion_cycle"],
 }
 
@@ -40,11 +50,17 @@ def _stance(score: float) -> str:
     return "不适用"
 
 
-def build_strategy_map(features: dict, kline: list[dict] | None = None, signals: list[dict] | None = None) -> dict:
-    """返回各策略适配度(0-10)、档位、推荐风格、以及真实信号证据。
+def build_strategy_map(
+    features: dict,
+    kline: list[dict] | None = None,
+    signals: list[dict] | None = None,
+    backtest: list[dict] | None = None,
+) -> dict:
+    """返回各策略适配度(0-10)、档位、推荐风格、真实信号证据与信号回测胜率。
 
     - 有 signals（真实 K 线算出）：以信号强度加权，叠加特征代理基线。
     - 无 signals：纯特征代理（与历史行为兼容）。
+    - backtest：信号胜率回测结果（见 backtest.py），作为信号实证可信度锚点。
     """
     mom = float(features.get("momentum") or 0.0)
     vol = float(features.get("volatility") or 0.3)
@@ -84,6 +100,25 @@ def build_strategy_map(features: dict, kline: list[dict] | None = None, signals:
 
     best = max(scores, key=lambda k: scores[k])
     evidence = sorted(fired, key=lambda s: s.get("strength", 0.0), reverse=True)[:3]
+
+    # 信号回测：加权平均胜率作为「实证可信度」（弱证据信号自动降低推荐信心）
+    bt_summary = None
+    if backtest:
+        usable = [b for b in backtest if b.get("available") and b.get("horizons")]
+        if usable:
+            h5 = [b["horizons"].get("5") for b in usable if b["horizons"].get("5")]
+            if h5:
+                wr = sum(float(h["win_rate"]) for h in h5) / len(h5)
+                ar = sum(float(h["avg_return"]) for h in h5) / len(h5)
+                samples = sum(int(b.get("samples", 0)) for b in usable)
+                bt_summary = {
+                    "signals_checked": len(usable),
+                    "samples": samples,
+                    "avg_5d_win_rate": round(wr, 3),
+                    "avg_5d_return": round(ar, 4),
+                    "credible": wr >= 0.5,
+                }
+
     return {
         "scores": {k: round(v, 1) for k, v in scores.items()},
         "stance": {k: _stance(v) for k, v in scores.items()},
@@ -93,5 +128,7 @@ def build_strategy_map(features: dict, kline: list[dict] | None = None, signals:
         "signals": list(signals or []),
         "fired_count": len(fired),
         "top_evidence": [f"{s['name']}：{s['evidence']}" for s in evidence],
+        "backtest": backtest or [],
+        "backtest_summary": bt_summary,
         "kline_driven": bool(signals),
     }

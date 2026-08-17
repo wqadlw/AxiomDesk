@@ -16,7 +16,7 @@ from .config import settings
 
 request_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
 
-_LOGGER_NAME = "uzi"
+_LOGGER_NAME = "axiom"
 _configured = False
 
 

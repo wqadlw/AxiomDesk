@@ -3,14 +3,14 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "uzi-terminal"
-version = "2.0.0"
-description = "UZI 投研终端 · 个股深度分析 Web 终端（66 评委 × 20 维框架 × DCF/Comps/LBO 估值 × 8 信号杀猪盘检测）"
+name = "axiomdesk"
+version = "3.0.0"
+description = "AxiomDesk · 公理级投研终端（四层研判：市场情绪 → 策略指标 → 执行计划 → 智能记忆）——66 评委 × 20 维框架 × 三模型估值 × 杀猪盘检测 × 游资确定性评分 × 盘中预警"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "UZI Terminal Contributors" }]
-keywords = ["a-share", "stock", "analysis", "quant", "valuation", "fastapi"]
+authors = [{ name = "AxiomDesk Contributors" }]
+keywords = ["a-share", "stock", "analysis", "quant", "valuation", "fastapi", "watchlist", "alerts", "fintech"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
@@ -40,13 +40,14 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/uzi-terminal"
-Repository = "https://github.com/your-org/uzi-terminal"
-Documentation = "https://github.com/your-org/uzi-terminal/blob/main/README.md"
+Homepage = "https://github.com/your-org/axiomdesk"
+Repository = "https://github.com/your-org/axiomdesk"
+Documentation = "https://github.com/your-org/axiomdesk/blob/main/README.md"
 "Methodology (UZI-Skill)" = "https://github.com/FloatFu-true/UZI-Skill"
 
 [project.scripts]
-uzi-terminal = "server.app:run"
+axiomdesk = "server.app:run"
+uzi-terminal = "server.app:run"  # 兼容旧名
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -196,23 +196,40 @@ def wave_theory(kline, tech, features) -> dict:
 
 
 def dragon_head(kline, tech, features) -> dict:
-    """龙头策略：热点题材 + 强势动量 + 量能活跃 + 连板/领涨。"""
+    """龙头策略：热点题材 + 强势动量 + 量能活跃 + 连板/领涨（市场活跃度加权）。"""
     hot = bool(features.get("is_hot_theme"))
     mom = _f(features.get("momentum"))
     vr = tech.get("vol_ratio_last") or 0
     boards = tech.get("boards") or 0
-    # 换手率>5% 在 UZI 数据里无直接字段，用「量比>1.5 且动量强」作代理
+    mkt_active = float(features.get("mkt_emotion_score", 0.45)) >= 0.45
+    mkt_max_boards = int(features.get("mkt_max_boards", 0))
+    # 市场连板高度 >= 3 时赚钱效应确认，龙头信号更可靠
     fired = hot and mom > 0.08 and vr >= 1.5 and (boards >= 1 or mom > 0.15)
     strength = min(1.0, 0.3 + (0.3 if hot else 0) + 0.2 * min(boards, 3) + min(0.2, mom))
+    if mkt_active:
+        strength = min(1.0, strength + 0.15)
     ev = f"热点={'是' if hot else '否'}，动量 {mom:+.0%}，量比 {vr:.1f}，连板 {boards}"
+    if mkt_active:
+        ev += f"，市场活跃（连板高标 {mkt_max_boards} 板）"
     return _sig("dragon_head", "龙头战法", fired, strength, "bullish" if fired else "neutral", ev)
 
 
 def emotion_cycle(kline, tech, features) -> dict:
-    """情绪周期：以连板高度 + 动量刻画市场情绪阶段。"""
+    """情绪周期：优先用真实市场快照（涨停家数/连板高度/炸板率），无快照时回退个股代理。"""
+    mkt_stage = features.get("mkt_emotion_stage")
+    mkt_score = float(features.get("mkt_emotion_score", 0.0))
+    mkt_live = features.get("mkt_source") == "live"
+    if mkt_live and mkt_stage:
+        limit_count = int(features.get("mkt_limit_count", 0))
+        max_boards = int(features.get("mkt_max_boards", 0))
+        br = float(features.get("mkt_break_rate", 0.0))
+        strength = max(0.3, mkt_score)
+        side = "bullish" if mkt_score >= 0.62 else ("bearish" if mkt_score < 0.30 else "neutral")
+        ev = f"涨停 {limit_count} 家 / 连板高标 {max_boards} 板 / 炸板率 {br:.0%} → {mkt_stage}"
+        return _sig("emotion_cycle", "情绪周期", True, strength, side, ev)
+    # 回退：个股连板高度 + 动量（无市场快照时的轻量代理）
     boards = tech.get("boards") or 0
     mom = _f(features.get("momentum"))
-    # 阶段：冰点(连板0且弱) → 回暖 → 高潮(高连板)
     if boards >= 3:
         stage, side = "情绪高潮(连板高标)", "bullish"
         strength = min(1.0, 0.6 + 0.1 * boards)
@@ -229,6 +246,128 @@ def emotion_cycle(kline, tech, features) -> dict:
     return _sig("emotion_cycle", "情绪周期", True, strength, side, ev)
 
 
+# ───────────────────────── 战法补充（instock / Sequoia-X 融合） ─────────────────────────
+def high_tight_flag(kline, tech, features) -> dict:
+    """高紧旗形（欧奈尔战法 · instock）：强势上涨后窄幅缩量整理，突破前形态。
+
+    条件：近 60 日涨幅 >= 30%（强势股）且近 10 日振幅 < 8%（高紧）
+    且近 5 日均量比 < 1.2（缩量整理）。
+    """
+    closes = tech.get("close") or []
+    if len(closes) < 60:
+        return _sig("high_tight_flag", "高紧旗形", False, 0.0, "neutral", "K线不足60日")
+    c60 = closes[-60]
+    gain = closes[-1] / c60 - 1.0 if c60 > 0 else 0.0
+    highs = tech.get("high") or []
+    lows = tech.get("low") or []
+    h10, l10 = max(highs[-10:]), min(lows[-10:])
+    tight = (h10 - l10) / closes[-1] if closes[-1] > 0 else 1.0
+    vr5 = [_f(x) for x in (tech.get("vol_ratio") or [])[-5:]]
+    shrink = (sum(vr5) / len(vr5)) < 1.2 if vr5 else False
+    fired = gain >= 0.30 and tight <= 0.08 and shrink
+    strength = 0.5 + (0.2 if gain >= 0.5 else 0) + (0.3 if tight <= 0.05 else 0)
+    ev = f"60日涨幅 {gain:+.0%}，近10日振幅 {tight:.1%}，量能{'萎缩' if shrink else '未萎缩'}"
+    return _sig("high_tight_flag", "高紧旗形", fired, min(strength, 1.0), "bullish" if fired else "neutral", ev)
+
+
+def runway_pattern(kline, tech, features) -> dict:
+    """停机坪（instock）：涨停后 3 日缩量横盘不破涨停价，蓄势待发。"""
+    closes = tech.get("close") or []
+    if len(closes) < 8:
+        return _sig("runway_pattern", "停机坪", False, 0.0, "neutral", "K线不足")
+    limit_day = (closes[-4] - closes[-5]) / closes[-5] if closes[-5] > 0 else 0.0
+    if limit_day < 0.095:
+        return _sig("runway_pattern", "停机坪", False, 0.0, "neutral", "未见涨停起点")
+    floor = closes[-4] * 0.97  # 不破涨停收盘价 3%
+    hold = all(closes[-3] > floor and closes[-2] > floor and closes[-1] > floor)
+    vols = [_f(x) for x in (tech.get("volume") or [])[-3:]]
+    shrinking = len(vols) == 3 and vols[-1] <= vols[0] * 1.1 and all(v > 0 for v in vols)
+    fired = hold and shrinking
+    strength = 0.55 + (0.25 if shrinking else 0) + (0.2 if closes[-1] > closes[-2] else 0)
+    ev = f"涨停(前4日)后 3 日{'站稳' if hold else '跌破'}涨停价，量能{'递减' if shrinking else '未递减'}"
+    return _sig("runway_pattern", "停机坪", fired, min(strength, 1.0), "bullish" if fired else "neutral", ev)
+
+
+def low_atr_base(kline, tech, features) -> dict:
+    """低波横盘（instock 低 ATR 战法）：ATR 低位 + 窄幅震荡，变盘前奏。"""
+    atr_last = tech.get("atr_last")
+    close = tech.get("last_close")
+    if not (atr_last and close):
+        return _sig("low_atr_base", "低波横盘", False, 0.0, "neutral", "ATR 数据不足")
+    atr_pct = atr_last / close if close > 0 else 1.0
+    highs = tech.get("high") or []
+    lows = tech.get("low") or []
+    if len(highs) < 20:
+        return _sig("low_atr_base", "低波横盘", False, 0.0, "neutral", "K线不足20日")
+    rng = (max(highs[-20:]) - min(lows[-20:])) / close if close > 0 else 1.0
+    fired = atr_pct <= 0.05 and rng <= 0.12
+    strength = 0.4 + (0.3 if atr_pct <= 0.035 else 0) + (0.3 if rng <= 0.08 else 0)
+    ev = f"ATR14={atr_pct:.1%}，近20日振幅 {rng:.1%} → {'低波横盘' if fired else '波动仍大'}"
+    return _sig("low_atr_base", "低波横盘", fired, min(strength, 1.0), "bullish" if fired else "neutral", ev)
+
+
+def limit_up_shakeout(kline, tech, features) -> dict:
+    """涨停洗盘（Sequoia-X ``limit_up_shakeout``）：涨停后回调洗盘，重新放量企稳。"""
+    closes = tech.get("close") or []
+    highs = tech.get("high") or []
+    if len(closes) < 25 or not kline:
+        return _sig("limit_up_shakeout", "涨停洗盘", False, 0.0, "neutral", "K线不足")
+    # 近 20 日内存在涨停
+    has_limit = any(
+        (closes[i] - closes[i - 1]) / closes[i - 1] >= 0.095
+        for i in range(len(closes) - 20, len(closes))
+        if closes[i - 1] > 0
+    )
+    if not has_limit:
+        return _sig("limit_up_shakeout", "涨停洗盘", False, 0.0, "neutral", "近20日无涨停")
+    recent_high = max(highs[-20:])
+    dd = (recent_high - closes[-1]) / recent_high if recent_high > 0 else 0.0
+    ma20 = tech.get("ma20_last")
+    back_above = bool(ma20 and closes[-1] >= ma20 * 0.99)
+    vr = tech.get("vol_ratio_last") or 0
+    fired = 0.03 <= dd <= 0.20 and back_above and vr >= 1.2
+    strength = 0.5 + (0.3 if 0.05 <= dd <= 0.15 else 0) + (0.2 if vr >= 1.5 else 0)
+    ev = f"近20日有涨停，回调 {dd:.0%}，{'站回MA20' if back_above else '未站回MA20'}，量比 {vr:.1f}"
+    return _sig("limit_up_shakeout", "涨停洗盘", fired, min(strength, 1.0), "bullish" if fired else "neutral", ev)
+
+
+def rps_breakout(kline, tech, features) -> dict:
+    """RPS 相对强度突破（Sequoia-X ``rps_breakout``）：强度领先 + 价格创新高。"""
+    rps_res = tech.get("rps") or {}
+    if not rps_res.get("valid"):
+        return _sig("rps_breakout", "RPS强度突破", False, 0.0, "neutral", "RPS 数据不足（需指数K线）")
+    score = float(rps_res.get("score", 0.0))
+    excess = float(rps_res.get("excess", 0.0))
+    close = tech.get("last_close")
+    closes = tech.get("close") or []
+    n_high = max(closes[-60:]) if len(closes) >= 60 else (max(closes) if closes else 0)
+    new_high = bool(close and n_high > 0 and close >= n_high * 0.995)
+    vr = tech.get("vol_ratio_last") or 0
+    fired = score >= 0.8 and new_high and vr >= 1.5
+    strength = 0.4 + min(0.4, max(0.0, score - 0.6) * 2.0) + (0.2 if new_high else 0)
+    ev = f"RPS={score:.2f}（超额 {excess:+.1%}），{'创60日高' if new_high else '未创新高'}，量比 {vr:.1f}"
+    return _sig("rps_breakout", "RPS强度突破", fired, min(strength, 1.0), "bullish" if fired else "neutral", ev)
+
+
+def cyq_oversold(kline, tech, features) -> dict:
+    """筹码超跌（instock CYQ 融合）：获利盘极少 + 超跌 + 量能回升 → 底部反弹候选。"""
+    cyq = tech.get("cyq") or {}
+    if not cyq.get("valid"):
+        return _sig("cyq_oversold", "筹码超跌", False, 0.0, "neutral", "筹码数据不足")
+    profit = float(cyq.get("profit_ratio", 0.5))
+    mom = _f(features.get("momentum"))
+    vr = tech.get("vol_ratio_last") or 0
+    close = tech.get("last_close")
+    lows = tech.get("low") or []
+    n_low = min(lows[-60:]) if len(lows) >= 60 else (min(lows) if lows else 0)
+    near_low = bool(close and n_low > 0 and close <= n_low * 1.06)
+    deeply_underwater = profit < 0.25
+    fired = deeply_underwater and ((mom < -0.08) or near_low) and vr >= 1.1
+    strength = 0.4 + (0.3 if profit < 0.15 else 0) + (0.3 if vr >= 1.3 else 0)
+    ev = f"获利盘 {profit:.0%}（{'深套区' if profit < 0.25 else '浮盈区'}），动量 {mom:+.0%}，量比 {vr:.1f}"
+    return _sig("cyq_oversold", "筹码超跌", fired, min(strength, 1.0), "bullish" if fired else "neutral", ev)
+
+
 DETECTORS = [
     ma_golden_cross,
     trend_breakout,
@@ -242,6 +381,12 @@ DETECTORS = [
     wave_theory,
     dragon_head,
     emotion_cycle,
+    high_tight_flag,
+    runway_pattern,
+    low_atr_base,
+    limit_up_shakeout,
+    rps_breakout,
+    cyq_oversold,
 ]
 
 
@@ -283,4 +428,10 @@ def _fallback_name(sid: str) -> str:
         "wave_theory": "波浪结构",
         "dragon_head": "龙头战法",
         "emotion_cycle": "情绪周期",
+        "high_tight_flag": "高紧旗形",
+        "runway_pattern": "停机坪",
+        "low_atr_base": "低波横盘",
+        "limit_up_shakeout": "涨停洗盘",
+        "rps_breakout": "RPS强度突破",
+        "cyq_oversold": "筹码超跌",
     }.get(sid, sid)

@@ -20,6 +20,39 @@ independent reimplementation built from UZI-Skill's published methodology. It
 does not incorporate UZI-Skill source code verbatim; it is provided under the
 MIT License as stated in LICENSE.
 
+Additionally, the four-layer capability architecture (market sentiment,
+strategy indicators, execution, intelligence) fuses methodology learned from
+the following open-source projects. All implementations below are independent
+reimplementations of published ideas/methodologies — no upstream source code
+is copied verbatim:
+
+  go-stock-dev   — watchlist P&L monitoring, multi-scenario trading plans,
+                   and 30-minute alert deduplication (design pattern).
+                   Licensed under the GPL-3.0 License; only its methodology
+                   is referenced here, not its code.
+                   Source: https://github.com/go-stock-dev/go-stock-dev
+
+  aiagents-stock — dragon-tiger-list (LHB) specialized analysis with a
+                   deterministic "hot-money" scoring track that anchors
+                   LLM conclusions (dual-track scoring).
+                   Licensed under the MIT License.
+                   Source: https://github.com/aiagents-stock/aiagents-stock
+
+  jcp-master     — per-ticker isolated cross-session memory (facts / views /
+                   decisions with weights + keyword recall).
+                   Licensed under the MIT License.
+                   Source: https://github.com/jcp-master/jcp-master
+
+  inStock        — CYQ chip distribution, KDJ/BOLL/RSI/CCI/OBV indicators,
+                   and rate_stats backtest of signal win rates (algorithmic
+                   ideas). Licensed under its upstream repository's terms.
+                   Source: https://github.com/myhhub/stock
+
+  Sequoia-X      — RPS relative strength ranking and limit-up washout
+                   re-entry confirmation signals.
+                   Licensed under the MIT License.
+                   Source: https://github.com/Sequoia-X/Sequoia-X
+
 Data sources: real-time quotes are fetched directly from public endpoints
 (Tencent / Sina / Eastmoney) or via optional community libraries (akshare,
 efinance, tushare, baostock). When no network or library is available, the

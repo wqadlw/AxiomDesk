@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UZI 投研终端 · 个股深度分析</title>
+  <title>AxiomDesk · 公理级投研终端</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,8 +11,8 @@
     <div class="brand">
       <span class="logo">◈</span>
       <div>
-        <div class="brand-name">UZI 投研终端</div>
-        <div class="brand-sub">66 位投资大佬 · 机构级建模 · 判断靠 AI</div>
+        <div class="brand-name">AxiomDesk</div>
+        <div class="brand-sub">公理级投研终端 · 66 位投资大佬 · 四层研判</div>
       </div>
     </div>
 
@@ -42,6 +42,7 @@
       <button class="nav-btn" data-tab="zones"><span class="ni">⛳</span>买入区间</button>
       <button class="nav-btn" data-tab="risks"><span class="ni">⚠</span>风险与欺诈</button>
       <button class="nav-btn" data-tab="trap"><span class="ni">🛡</span>杀猪盘检测</button>
+      <button class="nav-btn" data-tab="desk"><span class="ni">★</span>自选·监控<span id="desk-badge" class="nav-badge" hidden></span></button>
       <div class="nav-div"></div>
       <button class="nav-btn config-nav" data-tab="config"><span class="ni">⚙</span>接口配置</button>
     </nav>
@@ -85,6 +86,7 @@
         <div class="rh-right">
           <span class="rh-price" id="rh-price">—</span>
           <span id="rh-verdict" class="verdict watch">—</span>
+          <button id="btn-addwatch" class="ghost-btn sm" title="把当前标的加入自选">＋自选</button>
         </div>
       </div>
       <div class="rh-dataq" id="rh-dataq" hidden></div>
@@ -99,6 +101,7 @@
         <div class="tab-panel" id="tab-zones" hidden></div>
         <div class="tab-panel" id="tab-risks" hidden></div>
         <div class="tab-panel" id="tab-trap" hidden></div>
+        <div class="tab-panel" id="tab-desk" hidden></div>
         <div class="tab-panel" id="tab-config" hidden></div>
       </div>
     </section>

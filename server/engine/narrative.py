@@ -34,6 +34,7 @@ _REQUIRED = [
     "risks",
     "buy_zones",
     "valuation_interpretation",
+    "moderator_verdict",
 ]
 _BUY_ZONE_KEYS = ["value", "growth", "technical", "youzi"]
 
@@ -50,6 +51,8 @@ _SYSTEM_PROMPT = """你是一位**首席股票分析师**，正在使用一套�
 7. **风险**：risks 至少 3 条，具体到数字或事件（如"应收账款/营收>60%""ROE 连续 3 年下滑"）。
   8. **维度评语**：dim_commentary 覆盖素材里出现的每个维度 key，每条 ≥20 字，引用该维度的具体数字并回答：数据可信吗/数字背后故事/同行比/结构性问题/对论点影响。
   9. **人格声纹（关键）**：下面"【评委声纹发言】"里已经给出了若干位真实投资人的第一人称点评（带数字、带各自方法论）。你在 panel_insights 与 great_divide 里**必须引用这些真实人物姓名并模仿其声纹**——例如"巴菲特看中的是 ROE 与自由现金流，芒格则反过来担心…"。禁止把所有评委说成同一个声音；要呈现 66 人各自的立场与冲突。
+  10. **游资双轨校验**：下方"【游资确定性评分】"是规则引擎算出的可复现分数（席位/净买/机构/主力五段打分）。你的判断可以比它更细，但**不得与它方向相反而不解释**——若评分强/弱而你的结论相反，必须点名引用它的分数说明原因。
+  11. **主持人收束（关键）**：moderator_verdict 是辩论主持人（而非多空任何一方）的最终收束：先引多空双方最有分量的两个数字，再给出定调——"若…则偏多、若…则回避"式的**条件化执行结论**（≥30字，必须有具体触发条件，禁止和稀泥）。
 
 只输出 JSON，不要任何解释性文字。JSON 结构如下：
 {
@@ -69,7 +72,8 @@ _SYSTEM_PROMPT = """你是一位**首席股票分析师**，正在使用一套�
     "technical": {"price": 数值, "rationale": "..."},
     "youzi": {"price": 数值, "rationale": "..."}
   },
-  "valuation_interpretation": "DCF/Comps/LBO 三角验证与冲突解读，引数字"
+  "valuation_interpretation": "DCF/Comps/LBO 三角验证与冲突解读，引数字",
+  "moderator_verdict": "≥30字主持人收束：引多空双方最有分量的数字 + 条件化执行结论(若…则…)"
 }"""
 
 
@@ -220,6 +224,39 @@ def _compact_context(result: dict) -> str:
         ev = strat.get("top_evidence") or []
         for e in ev:
             lines.append("  - 信号：%s" % e)
+        bts = strat.get("backtest_summary")
+        if bts:
+            cred = "实证可信" if bts.get("credible") else "实证偏弱"
+            lines.append(
+                "  - 信号回测：%s 个形态样本，5日胜率 %s%%、均收益 %s%%（%s）"
+                % (
+                    bts.get("samples", 0),
+                    round((bts.get("avg_5d_win_rate") or 0) * 100),
+                    round((bts.get("avg_5d_return") or 0) * 100),
+                    cred,
+                )
+            )
+
+    # 市场情绪快照（涨停池/连板高度/炸板率/指数/板块资金主线）
+    mkt = result.get("market") or {}
+    emo = mkt.get("emotion") or {}
+    if emo:
+        lp = mkt.get("limit_pool") or {}
+        idx = (mkt.get("index") or {}).get("sh000001") or {}
+        src = "真实数据" if mkt.get("source") == "live" else "离线合成"
+        mkt_parts = ["【市场情绪】%s(%s)" % (emo.get("stage", "?"), src)]
+        if lp:
+            mkt_parts.append("涨停%s家" % lp.get("count", 0))
+            mkt_parts.append("连板高标%s板" % lp.get("max_boards", 0))
+        if mkt.get("break_rate") is not None:
+            mkt_parts.append("炸板率%s%%" % round(float(mkt["break_rate"]) * 100))
+        if idx.get("change_pct") is not None:
+            mkt_parts.append("上证%+.2f%%" % (float(idx["change_pct"]) * 100))
+        flows = mkt.get("sector_flow") or []
+        if flows:
+            top3 = "、".join(str(f.get("name", "")) for f in flows[:3])
+            mkt_parts.append("资金主线:%s" % top3)
+        lines.append(" · ".join(mkt_parts))
 
     # 关键价位（融合 tickflow levels 的 9 类价位精华）
     kl = result.get("key_levels") or {}
@@ -244,6 +281,34 @@ def _compact_context(result: dict) -> str:
         lines.append("【评委声纹发言】以下投资人已用各自声音点评（请模仿其立场与口头禅）：")
         for s in snips:
             lines.append("  - %s" % s)
+
+    # 游资确定性评分（双轨校验锚点：aiagents-stock 白名单打分思想）
+    yz = result.get("youzi") or {}
+    if yz.get("score") is not None:
+        yz_comp = yz.get("components") or {}
+        lines.append(
+            "【游资确定性评分】%s（%s/100）· 席位%s · 净买%s · 机构%s · 主力%s · 加分%s · 散户卖压%s"
+            % (
+                yz.get("level", "?"),
+                yz.get("score"),
+                yz_comp.get("youzi", 0),
+                yz_comp.get("net_buy", 0),
+                yz_comp.get("institution", 0),
+                yz_comp.get("main_flow", 0),
+                yz_comp.get("bonus", 0),
+                yz_comp.get("sell_penalty", 0),
+            )
+        )
+        lines.append("  - 画像：%s（%s）" % (yz.get("note", ""), yz.get("evidence", "")))
+    yz_zone = result.get("_youzi_zone")
+    if yz_zone and yz_zone.get("price"):
+        lines.append("【游资参考位】%s（%s）" % (yz_zone["price"], yz_zone.get("rationale", "")))
+
+    # 跨会话记忆（jcp-master 按股票隔离记忆：历史研判上下文）
+    mem_ctx = result.get("_memory_context") or ""
+    if mem_ctx:
+        lines.append("【历史记忆】用户此前对这只股票的分析要点（仅供参考，注意一致性）：")
+        lines.append(mem_ctx)
 
     return "\n".join(lines)
 

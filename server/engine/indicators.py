@@ -257,10 +257,218 @@ def consecutive_limit_ups(closes: list[float], limit_pct: float = 0.095) -> dict
     return {"boards": boards, "is_limit_up": bool(is_lu)}
 
 
-def compute_all(kline: list[dict]) -> dict[str, Any]:
+# ───────────────────────── 指标补充（融合自 instock / stock-analysis-master） ─────────────────────────
+def kdj(
+    high: list[float], low: list[float], close: list[float], n: int = 9
+) -> tuple[list[float], list[float], list[float]]:
+    """KDJ 随机指标（n=9, 3, 3）：返回 (K, D, J)，热身期用滚动窗口内初值递推。"""
+    m = min(len(high), len(low), len(close))
+    if m == 0:
+        return [], [], []
+    k, d, j = 50.0, 50.0, 50.0
+    ks: list[float] = []
+    ds: list[float] = []
+    js: list[float] = []
+    for i in range(m):
+        window_hi = high[max(0, i - n + 1) : i + 1]
+        window_lo = low[max(0, i - n + 1) : i + 1]
+        hhv = max(window_hi) if window_hi else 0.0
+        llv = min(window_lo) if window_lo else 0.0
+        rsv = (close[i] - llv) / (hhv - llv) * 100.0 if hhv > llv else 50.0
+        k = (2.0 * k + rsv) / 3.0
+        d = (2.0 * d + k) / 3.0
+        j = 3.0 * k - 2.0 * d
+        ks.append(round(k, 2))
+        ds.append(round(d, 2))
+        js.append(round(j, 2))
+    return ks, ds, js
+
+
+def boll(
+    close: list[float], n: int = 20, k: float = 2.0
+) -> tuple[list[float | None], list[float | None], list[float | None]]:
+    """布林带：返回 (mid, upper, lower)，热身期为 None。"""
+    out_m: list[float | None] = [None] * len(close)
+    out_u: list[float | None] = [None] * len(close)
+    out_l: list[float | None] = [None] * len(close)
+    for i in range(len(close)):
+        if i + 1 < n:
+            continue
+        win = close[i - n + 1 : i + 1]
+        if not all(_ok(x) for x in win):
+            continue
+        mean = sum(win) / n
+        var = sum((x - mean) ** 2 for x in win) / n
+        sd = math.sqrt(var)
+        out_m[i] = round(mean, 3)
+        out_u[i] = round(mean + k * sd, 3)
+        out_l[i] = round(mean - k * sd, 3)
+    return out_m, out_u, out_l
+
+
+def rsi(close: list[float], n: int = 14) -> list[float]:
+    """RSI 相对强弱（Wilder 平滑）。"""
+    if len(close) < 2:
+        return []
+    gains: list[float] = []
+    losses: list[float] = []
+    for i in range(1, len(close)):
+        chg = close[i] - close[i - 1]
+        gains.append(max(chg, 0.0))
+        losses.append(max(-chg, 0.0))
+    out: list[float] = []
+    avg_gain = avg_loss = 0.0
+    for i in range(len(gains)):
+        if i < n:
+            seg_g = gains[: i + 1]
+            seg_l = losses[: i + 1]
+            avg_gain = sum(seg_g) / n
+            avg_loss = sum(seg_l) / n
+        else:
+            avg_gain = (avg_gain * (n - 1) + gains[i]) / n
+            avg_loss = (avg_loss * (n - 1) + losses[i]) / n
+        rs = avg_gain / avg_loss if avg_loss > 1e-12 else 999.0
+        out.append(round(100.0 - 100.0 / (1.0 + rs), 2))
+    return out
+
+
+def cci(high: list[float], low: list[float], close: list[float], n: int = 14) -> list[float]:
+    """CCI 顺势指标（n=14, 0.015 常数）。"""
+    m = min(len(high), len(low), len(close))
+    if m == 0:
+        return []
+    tp = [(high[i] + low[i] + close[i]) / 3.0 for i in range(m)]
+    out: list[float] = []
+    for i in range(m):
+        if i + 1 < n:
+            out.append(0.0)
+            continue
+        win = tp[i - n + 1 : i + 1]
+        mean = sum(win) / n
+        md = sum(abs(x - mean) for x in win) / n
+        out.append(round((tp[i] - mean) / (0.015 * md), 2) if md > 1e-12 else 0.0)
+    return out
+
+
+def obv(close: list[float], volume: list[float]) -> list[float]:
+    """OBV 能量潮（累计量能）。"""
+    m = min(len(close), len(volume))
+    if m == 0:
+        return []
+    out: list[float] = []
+    acc = 0.0
+    for i in range(m):
+        if i > 0 and _ok(close[i]) and _ok(close[i - 1]):
+            if close[i] > close[i - 1]:
+                acc += volume[i]
+            elif close[i] < close[i - 1]:
+                acc -= volume[i]
+        out.append(round(acc, 2))
+    return out
+
+
+def chip_distribution(kline: list[dict], bins: int = 50, lookback: int = 120) -> dict[str, Any]:
+    """筹码分布（CYQ）· 移植 instock ``core/kline/cyq.py`` 的三角分布迭代衰减模型。
+
+    模型：每根 K 线按「换手率代理 = 当日量 / 窗口最大量」注入三角分布新筹码，
+    同时按 (1 - T) 衰减旧筹码。输出获利比例 / 平均成本 / 90% / 70% 成本集中度。
+
+    UZI K 线无换手率字段，故用归一化成交量作代理——结构与原模型一致，
+    量能大的 K 线筹码占比高、衰减快，量能小的 K 线影响小。
+    """
+    if len(kline) < 10:
+        return {"valid": False}
+    sub = kline[-lookback:] if len(kline) > lookback else kline
+    highs = [max(_f(r.get("high")), 1e-9) for r in sub]
+    lows = [max(_f(r.get("low")), 1e-9) for r in sub]
+    vols = [_f(r.get("volume")) for r in sub]
+    closes = [_f(r.get("close")) for r in sub]
+    hi, lo = max(highs), min(lows)
+    if not (hi > lo > 0):
+        return {"valid": False}
+    vmax = max(vols) if any(vols) else 0.0
+    step = (hi - lo) / bins
+    chips = [0.0] * bins
+    for i in range(len(sub)):
+        v = vols[i]
+        if v <= 0 or vmax <= 0:
+            continue
+        t = max(0.05, min(0.6, v / vmax))  # 换手率代理
+        chips = [c * (1.0 - t) for c in chips]
+        a = min(int((lows[i] - lo) / step), bins - 1)
+        b = min(int((highs[i] - lo) / step), bins - 1)
+        a, b = max(a, 0), min(b, bins - 1)
+        span = b - a + 1
+        if span <= 0:
+            continue
+        # 三角分布权重（峰值居中），归一化使注入总量 = t
+        weights = [1.0 - abs(2 * j - (span - 1)) / max(1, span - 1) for j in range(span)]
+        wsum = sum(weights) or 1.0
+        for j, w in enumerate(weights):
+            chips[a + j] += t * w / wsum
+    total = sum(chips)
+    if total <= 0:
+        return {"valid": False}
+    cur = closes[-1]
+    profit = sum(c for i, c in enumerate(chips) if lo + (i + 0.5) * step <= cur) / total
+    avg_cost = sum((lo + (i + 0.5) * step) * chips[i] for i in range(bins)) / total
+
+    def _concentration(ratio: float) -> float | None:
+        # 覆盖 ratio 比例筹码的最小区间（含 90% / 70% 成本集中度）
+        best = None
+        for a in range(bins):
+            acc = 0.0
+            for b in range(a, bins):
+                acc += chips[b] / total
+                if acc >= ratio:
+                    span_px = (b - a + 1) * step
+                    center = (lo + (a + b) / 2.0 * step) * 2.0 or 1.0
+                    cval = span_px / center if center else 0.0
+                    if best is None or (b - a) < (best[1] - best[0]):
+                        best = (a, b, cval)
+                    break
+        if best is None:
+            return None
+        return round(best[2], 4)
+
+    return {
+        "valid": True,
+        "profit_ratio": round(profit, 4),
+        "avg_cost": round(avg_cost, 3),
+        "concentration_90": _concentration(0.9),
+        "concentration_70": _concentration(0.7),
+    }
+
+
+def rps(close: list[float], index_close: list[float], n: int = 120) -> dict[str, Any]:
+    """RPS 欧奈尔相对强度 · 移植 Sequoia-X ``strategy/rps_breakout.py``。
+
+    RPS = 个股近 n 日涨幅 − 指数近 n 日涨幅；再映射为 0~1 的强度分。
+    """
+    if len(close) < 2 or len(index_close) < 2:
+        return {"valid": False}
+    c = close[-n:] if len(close) > n else close
+    ic = index_close[-n:] if len(index_close) > n else index_close
+    if not (c[0] > 0 and ic[0] > 0):
+        return {"valid": False}
+    stock_ret = c[-1] / c[0] - 1.0
+    index_ret = ic[-1] / ic[0] - 1.0
+    excess = stock_ret - index_ret
+    score = max(0.0, min(1.0, 0.5 + excess * 2.5))
+    return {
+        "valid": True,
+        "stock_return": round(stock_ret, 4),
+        "index_return": round(index_ret, 4),
+        "excess": round(excess, 4),
+        "score": round(score, 3),
+    }
+
+
+def compute_all(kline: list[dict], index_kline: list[dict] | None = None) -> dict[str, Any]:
     """一次性算出供策略信号与 d2 维度使用的全部技术指标 / 价位。
 
     返回结构稳定（纯 dict + 列表），下游即使某字段缺失也能安全取值。
+    ``index_kline`` 可选：提供指数 K 线后计算 RPS 相对强度。
     """
     if not kline or len(kline) < 2:
         return {"valid": False}
@@ -290,6 +498,15 @@ def compute_all(kline: list[dict]) -> dict[str, Any]:
     rnd = round_numbers(last)
     clu = consecutive_limit_ups(close)
 
+    # 指标补充（instock / Sequoia-X 融合）
+    k_, d_, j_ = kdj(high, low, close)
+    b_mid, b_up, b_low = boll(close)
+    rsi14 = rsi(close)
+    cci14 = cci(high, low, close)
+    obv14 = obv(close, vol)
+    cyq = chip_distribution(kline)
+    rps_res = rps(close, [_f(r.get("close")) for r in index_kline]) if index_kline else {"valid": False}
+
     return {
         "valid": True,
         "close": close,
@@ -304,6 +521,7 @@ def compute_all(kline: list[dict]) -> dict[str, Any]:
         "ma60_last": _last(ma60),
         "macd": {"dif": dif, "dea": dea, "hist": hist},
         "atr": atr14,
+        "atr_last": _last(atr14),
         "vol_ratio": vr,
         "vol_ratio_last": _last(vr),
         "pivot": piv,
@@ -316,4 +534,20 @@ def compute_all(kline: list[dict]) -> dict[str, Any]:
         "boards": clu["boards"],
         "is_limit_up": clu["is_limit_up"],
         "last_close": last,
+        # 指标补充
+        "kdj": {"k": k_, "d": d_, "j": j_},
+        "kdj_k_last": _last(k_),
+        "kdj_j_last": _last(j_),
+        "boll": {"mid": b_mid, "upper": b_up, "lower": b_low},
+        "boll_mid_last": _last(b_mid),
+        "boll_upper_last": _last(b_up),
+        "boll_lower_last": _last(b_low),
+        "rsi": rsi14,
+        "rsi_last": _last(rsi14),
+        "cci": cci14,
+        "cci_last": _last(cci14),
+        "obv": obv14,
+        "obv_last": _last(obv14),
+        "cyq": cyq,
+        "rps": rps_res,
     }

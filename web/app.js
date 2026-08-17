@@ -1,5 +1,5 @@
-/* UZI 投研终端 · 前端逻辑（无依赖原生 JS）
- * 红=涨、绿=跌（中国习惯）。渲染 9 大板块 + 历史抽屉 + 对比弹窗。
+/* AxiomDesk · 公理级投研终端前端逻辑（无依赖原生 JS）
+ * 红=涨、绿=跌（中国习惯）。渲染 9 大板块 + 自选·监控 + 历史抽屉 + 对比弹窗。
  */
 (() => {
   "use strict";
@@ -116,6 +116,7 @@
         $("#tab-" + btn.dataset.tab).hidden = false;
         if (btn.dataset.tab === "jury") renderJury();
         if (btn.dataset.tab === "valuation") renderValuation();
+        if (btn.dataset.tab === "desk") renderDesk();
         if (btn.dataset.tab === "config") loadConfig();
       });
     });
@@ -513,6 +514,186 @@
     if (t.recommendation) panel.appendChild(el("div", { class: "trap-rec", html: esc(t.recommendation) }));
   }
 
+  // ───────── 自选·监控（执行层：自选/计划/预警/记忆）─────────
+  async function renderDesk() {
+    const panel = $("#tab-desk");
+    panel.innerHTML = "";
+    panel.appendChild(el("div", { class: "section-title", text: "自选股 · 操作计划 · 盘中预警 · 跨会话记忆" }));
+
+    const form = el("div", { class: "desk-add" }, [
+      el("input", { id: "dk-ticker", class: "q-ticker", placeholder: "代码/名称，如 600519" }),
+      el("input", { id: "dk-cost", class: "cfg-num", type: "number", step: "0.001", min: "0", placeholder: "成本价" }),
+      el("input", { id: "dk-stop", class: "cfg-num", type: "number", step: "0.001", min: "0", placeholder: "止损" }),
+      el("input", { id: "dk-target", class: "cfg-num", type: "number", step: "0.001", min: "0", placeholder: "止盈" }),
+      el("button", { class: "run", onclick: addWatchForm }, "加入自选"),
+    ]);
+    panel.appendChild(form);
+    panel.appendChild(el("div", { class: "desk-actions" }, [
+      el("button", { class: "ghost-btn", onclick: checkMonitor }, "⚡ 检查盘中预警"),
+      el("button", { class: "ghost-btn", onclick: clearEvents }, "清空事件"),
+      el("button", { class: "ghost-btn", onclick: refreshDesk }, "⟳ 刷新"),
+    ]));
+
+    panel.appendChild(el("div", { class: "section-title", text: "自选清单 · 实时盈亏" }));
+    panel.appendChild(el("div", { class: "desk-box", id: "desk-watch" }));
+    panel.appendChild(el("div", { class: "section-title", text: "盘中预警事件（30 分钟去重）" }));
+    panel.appendChild(el("div", { class: "desk-box", id: "desk-events" }));
+    panel.appendChild(el("div", { class: "section-title", text: "操作计划（多情景：主攻 / 回调低吸 / 破位离场）" }));
+    panel.appendChild(el("div", { class: "desk-box", id: "desk-plans" }));
+    panel.appendChild(el("div", { class: "section-title", text: "跨会话记忆" }));
+    panel.appendChild(el("div", { class: "desk-box", id: "desk-memory" }));
+
+    await Promise.all([loadWatch(), loadEvents(), loadPlans(), loadMemory()]);
+    refreshBadge();
+  }
+  async function loadWatch() {
+    const box = $("#desk-watch"); box.innerHTML = "";
+    try {
+      const d = await (await fetch(`${api}/api/watchlist`)).json();
+      if (!(d.items || []).length) { box.appendChild(el("div", { class: "muted", text: "暂无自选，先加一只吧" })); return; }
+      const table = el("table", { class: "desk-table" });
+      table.appendChild(el("tr", {}, ["标的", "现价", "成本", "浮动盈亏", "止损", "止盈", "状态", "操作"].map(c => el("th", { text: c }))));
+      (d.items || []).forEach(w => {
+        const up = w.pnl_pct >= 0;
+        table.appendChild(el("tr", {}, [
+          el("td", { html: `<b>${esc(w.name)}</b><br><span class="muted">${esc(w.ticker)}</span>` }),
+          el("td", { text: `¥${fmt(w.price)}` }),
+          el("td", { text: `¥${fmt(w.cost)}` }),
+          el("td", { class: up ? "up" : "down", text: `${pct(w.pnl_pct)} (${up ? "+" : ""}${fmt(w.pnl_abs)})` }),
+          el("td", { text: w.stop_loss ? `¥${fmt(w.stop_loss)}` : "—" }),
+          el("td", { text: w.target ? `¥${fmt(w.target)}` : "—" }),
+          el("td", { class: "muted", text: w.live ? "实时" : "离线" }),
+          el("td", {}, el("button", { class: "ghost-btn sm", onclick: () => removeWatch(w.ticker) }, "删除")),
+        ]));
+      });
+      box.appendChild(table);
+    } catch (e) { box.appendChild(el("div", { class: "muted", text: "加载失败：" + e.message })); }
+  }
+  async function loadEvents() {
+    const box = $("#desk-events"); box.innerHTML = "";
+    try {
+      const d = await (await fetch(`${api}/api/events?unacknowledged=true&limit=100`)).json();
+      const items = d.items || [];
+      if (!items.length) { box.appendChild(el("div", { class: "muted", text: "暂无未确认预警事件" })); return; }
+      const kindMap = { stop_loss: ["跌破止损", "down"], take_profit: ["触及止盈", "up"], entry: ["进入入场区", "up"], big_move: ["异动", "warn"], breakout: ["突破目标", "up"] };
+      items.forEach(ev => {
+        const [ktxt, kcls] = kindMap[ev.kind] || [ev.kind, "warn"];
+        box.appendChild(el("div", { class: "ev-item" }, [
+          el("span", { class: "ev-kind " + kcls, text: ktxt }),
+          el("div", { class: "ev-msg", text: ev.message }),
+          el("span", { class: "muted", text: new Date((ev.fired_at || 0) * 1000).toLocaleTimeString() }),
+          el("button", { class: "ghost-btn sm", onclick: () => ackEvent(ev.id) }, "确认"),
+        ]));
+      });
+    } catch (e) { box.appendChild(el("div", { class: "muted", text: "加载失败：" + e.message })); }
+  }
+  async function loadPlans() {
+    const box = $("#desk-plans"); box.innerHTML = "";
+    try {
+      const d = await (await fetch(`${api}/api/plans`)).json();
+      const items = d.items || [];
+      if (!items.length) { box.appendChild(el("div", { class: "muted", text: "暂无操作计划，可先运行分析，再到「自选」或本页生成" })); return; }
+      items.forEach(p => {
+        box.appendChild(el("div", { class: "plan-item" }, [
+          el("div", { class: "plan-head" }, [
+            el("b", { text: p.name || p._ticker }),
+            el("span", { class: "verdict " + verdictClass(p.verdict), text: p.verdict || "—" }),
+            el("span", { class: "muted", text: `${p.direction || ""} · RR ${fmt(p.risk_reward)} · 仓位 ${p.position_pct ?? "—"}%` }),
+          ]),
+          el("div", { class: "plan-meta", text: `入场 ¥${fmt(p.entry_zone?.min)}~${fmt(p.entry_zone?.max)} · 止损 ¥${fmt(p.stop_loss)} · 目标 ¥${fmt(p.target_1)}/${fmt(p.target_2)}` }),
+          el("div", { class: "plan-sc" }, (p.scenarios || []).map(s => el("div", { class: "plan-sc-item", text: `${s.name}：${s.condition} → ${s.action}` }))),
+          el("div", { class: "plan-ops" }, [
+            el("button", { class: "ghost-btn sm", onclick: () => refreshPlan(p._ticker) }, "重新生成"),
+            el("button", { class: "ghost-btn sm", onclick: () => removePlan(p._ticker) }, "删除"),
+          ]),
+        ]));
+      });
+    } catch (e) { box.appendChild(el("div", { class: "muted", text: "加载失败：" + e.message })); }
+  }
+  async function loadMemory() {
+    const box = $("#desk-memory"); box.innerHTML = "";
+    const tk = (current && current.meta && current.meta.ticker) || $("#dk-ticker").value.trim();
+    if (!tk) { box.appendChild(el("div", { class: "muted", text: "先运行一次分析，这里会展示该标的的历史研判记忆" })); return; }
+    try {
+      const d = await (await fetch(`${api}/api/memory/${encodeURIComponent(tk)}`)).json();
+      if (!(d.items || []).length) { box.appendChild(el("div", { class: "muted", text: `暂无 ${tk} 的历史记忆（真实数据模式分析后自动沉淀）` })); return; }
+      (d.items || []).slice(0, 10).forEach(it => {
+        box.appendChild(el("div", { class: "mem-item" }, [
+          el("span", { class: "mem-kind " + it.kind, text: { fact: "事实", view: "观点", decision: "决策" }[it.kind] || it.kind }),
+          el("span", { class: "mem-text", text: it.content }),
+        ]));
+      });
+    } catch (e) { box.appendChild(el("div", { class: "muted", text: "加载失败：" + e.message })); }
+  }
+  async function addWatchForm() {
+    const tk = $("#dk-ticker").value.trim();
+    if (!tk) { toast("请输入代码/名称"); return; }
+    const body = { ticker: tk };
+    const cost = parseFloat($("#dk-cost").value); if (!isNaN(cost) && cost > 0) body.cost = cost;
+    const stop = parseFloat($("#dk-stop").value); if (!isNaN(stop) && stop > 0) body.stop_loss = stop;
+    const tgt = parseFloat($("#dk-target").value); if (!isNaN(tgt) && tgt > 0) body.target = tgt;
+    try {
+      const r = await fetch(`${api}/api/watchlist`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || "加入失败");
+      toast(`已加入自选：${d.item?.name || tk}`);
+      $("#dk-ticker").value = "";
+      refreshDesk();
+    } catch (e) { toast("加入失败：" + e.message); }
+  }
+  async function removeWatch(tk) {
+    try { await fetch(`${api}/api/watchlist/${encodeURIComponent(tk)}`, { method: "DELETE" }); toast("已移除"); refreshDesk(); }
+    catch (e) { toast("操作失败：" + e.message); }
+  }
+  async function checkMonitor() {
+    toast("正在检查盘中预警…");
+    try {
+      const d = await (await fetch(`${api}/api/monitor/check`, { method: "POST" })).json();
+      toast(`检查完成：新增 ${(d.new_events || []).length} 条事件`);
+      await loadEvents(); refreshBadge();
+    } catch (e) { toast("检查失败：" + e.message); }
+  }
+  async function ackEvent(id) {
+    try { await fetch(`${api}/api/events/${id}/ack`, { method: "POST" }); loadEvents(); refreshBadge(); }
+    catch (e) { toast("操作失败：" + e.message); }
+  }
+  async function clearEvents() {
+    try { await fetch(`${api}/api/events/clear`, { method: "POST" }); toast("已清空事件"); loadEvents(); refreshBadge(); }
+    catch (e) { toast("操作失败：" + e.message); }
+  }
+  async function refreshPlan(tk) {
+    toast("正在生成操作计划…");
+    try {
+      const r = await fetch(`${api}/api/plans/${encodeURIComponent(tk)}`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || "生成失败");
+      toast("计划已更新"); loadPlans();
+    } catch (e) { toast("生成失败：" + e.message); }
+  }
+  async function removePlan(tk) {
+    try { await fetch(`${api}/api/plans/${encodeURIComponent(tk)}`, { method: "DELETE" }); toast("计划已删除"); loadPlans(); }
+    catch (e) { toast("操作失败：" + e.message); }
+  }
+  async function refreshDesk() { await Promise.all([loadWatch(), loadEvents(), loadPlans(), loadMemory()]); }
+  async function refreshBadge() {
+    const b = $("#desk-badge");
+    try {
+      const d = await (await fetch(`${api}/api/events?unacknowledged=true&limit=1`)).json();
+      const n = (d.stats || {}).unacknowledged || 0;
+      if (n > 0) { b.textContent = n > 99 ? "99+" : String(n); b.hidden = false; } else b.hidden = true;
+    } catch { b.hidden = true; }
+  }
+  async function addWatchCurrent() {
+    if (!current) return;
+    const m = current.meta || {};
+    try {
+      const r = await fetch(`${api}/api/watchlist`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticker: m.ticker, cost: m.price }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || "加入失败");
+      toast(`已加入自选：${d.item?.name || m.ticker}`); refreshBadge();
+    } catch (e) { toast("加入失败：" + e.message); }
+  }
+
   // ───────── 流水线 ─────────
   function renderPipeline() {
     const panel = $("#tab-pipeline"); panel.innerHTML = "";
@@ -772,6 +953,8 @@
     $("#btn-compare").addEventListener("click", () => ($("#compare-modal").hidden = false));
     $("#compare-close").addEventListener("click", closeDrawers);
     $("#cmp-run").addEventListener("click", runCompare);
+    $("#btn-addwatch").addEventListener("click", addWatchCurrent);
+    refreshBadge();
     // 报告头也能点回概览
     renderPipeline();
   }

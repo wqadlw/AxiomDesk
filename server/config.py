@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     )
 
     # ── 服务 ──
-    app_name: str = "UZI 投研终端"
+    app_name: str = "AxiomDesk 公理级投研终端"
     host: str = "127.0.0.1"
     port: int = 8137
     api_v1_prefix: str = "/api/v1"

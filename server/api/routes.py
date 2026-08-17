@@ -33,10 +33,14 @@ from ..llm.factory import reload_llm
 from ..providers.base import ProviderError
 from ..providers.factory import reload_provider
 from ..providers.registry import PROVIDER_META, class_for
+from ..services import memory as MEM
+from ..services import monitor as MN
+from ..services import plan as PL
+from ..services import watchlist as WL
 from .errors import BadRequestError
 from .schemas import AnalyzeParams
 
-API_VERSION = "2.0.0"
+API_VERSION = "3.0.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -306,6 +310,127 @@ def _config_reset():
     }
 
 
+# ── 执行层：自选股 ──
+class WatchAdd(BaseModel):
+    ticker: str = Field(..., min_length=1, max_length=20, description="股票代码 / 名称")
+    cost: float | None = Field(None, ge=0, description="成本价；缺省用现价")
+    stop_loss: float | None = Field(None, ge=0)
+    target: float | None = Field(None, ge=0)
+    note: str = Field("", max_length=200)
+
+
+def _watch_list():
+    return {"version": API_VERSION, "count": WL.watch_count(), "items": WL.list_watch()}
+
+
+def _watch_add(body: WatchAdd):
+    if not body.ticker.strip():
+        raise BadRequestError("ticker 不能为空")
+    try:
+        item = WL.add_watch(body.ticker.strip().upper(), body.cost, body.stop_loss, body.target, body.note)
+    except ValueError as e:
+        raise BadRequestError(str(e))
+    return {"version": API_VERSION, "ok": True, "item": item}
+
+
+def _watch_get(ticker: str):
+    row = WL.get_store().watchlist_get(ticker)
+    if not row:
+        raise BadRequestError(f"自选不存在：{ticker}")
+    return {"version": API_VERSION, "item": WL.snapshot_one(ticker, cached=row)}
+
+
+def _watch_delete(ticker: str):
+    WL.remove_watch(ticker)
+    return {"version": API_VERSION, "ok": True}
+
+
+# ── 执行层：盘中预警事件 ──
+def _events_recent(limit: int = Query(50, ge=1, le=500), unack: bool = Query(False, alias="unacknowledged")):
+    return {
+        "version": API_VERSION,
+        "items": MN.events(limit=limit, unacknowledged_only=unack),
+        "stats": MN.alert_stats(),
+    }
+
+
+def _events_ack(event_id: int):
+    MN.acknowledge(event_id)
+    return {"version": API_VERSION, "ok": True}
+
+
+def _events_clear():
+    MN.clear()
+    return {"version": API_VERSION, "ok": True}
+
+
+def _monitor_check():
+    new_events = MN.check_watchlist()
+    return {"version": API_VERSION, "new_events": new_events, "stats": MN.alert_stats()}
+
+
+# ── 执行层：操作计划 ──
+def _plan_list():
+    return {"version": API_VERSION, "count": len(PL.list_plans()), "items": PL.list_plans()}
+
+
+def _plan_get(ticker: str):
+    p = PL.get_plan(ticker)
+    if not p:
+        raise BadRequestError(f"暂无操作计划：{ticker}（可 POST /api/plans/{ticker} 生成）")
+    return {"version": API_VERSION, "plan": p}
+
+
+def _plan_build(ticker: str, depth: str = Query("deep", pattern="^(lite|medium|deep)$")):
+    try:
+        plan = PL.build_plan(ticker, depth=depth)
+    except Exception as e:
+        raise BadRequestError(f"计划生成失败：{e}")
+    return {"version": API_VERSION, "ok": True, "plan": plan}
+
+
+def _plan_delete(ticker: str):
+    PL.remove_plan(ticker)
+    return {"version": API_VERSION, "ok": True}
+
+
+# ── 执行层：跨会话记忆 ──
+class RememberRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=500)
+    kind: str = Field("fact", pattern="^(fact|view|decision)$")
+    weight: float = Field(1.0, ge=0.1, le=10.0)
+
+
+class SummaryRequest(BaseModel):
+    summary: str = Field(..., min_length=1, max_length=2000)
+
+
+def _mem_recall(ticker: str, query: str = Query("", max_length=100)):
+    return {
+        "version": API_VERSION,
+        "context": MEM.recall_context(ticker, query=query),
+        "items": MEM.recall(ticker, query=query),
+    }
+
+
+def _mem_remember(ticker: str, body: RememberRequest):
+    MEM.remember(ticker, body.content, kind=body.kind, weight=body.weight)
+    return {"version": API_VERSION, "ok": True}
+
+
+def _mem_summary_get(ticker: str):
+    return {"version": API_VERSION, "summary": MEM.get_summary(ticker)}
+
+
+def _mem_summary_set(ticker: str, body: SummaryRequest):
+    MEM.summarize_and_store(ticker, body.summary)
+    return {"version": API_VERSION, "ok": True}
+
+
+def _mem_rounds(ticker: str):
+    return {"version": API_VERSION, "rounds": MEM.recent_rounds(ticker)}
+
+
 # 注册到两个路由对象
 for _rtr in (router, router_v1):
     _rtr.add_api_route("/health", _health, methods=["GET"])
@@ -320,3 +445,24 @@ for _rtr in (router, router_v1):
     _rtr.add_api_route("/config", _config_put, methods=["PUT"])
     _rtr.add_api_route("/config/test", _config_test, methods=["POST"])
     _rtr.add_api_route("/config/reset", _config_reset, methods=["POST"])
+    # ── 执行层：自选股 ──
+    _rtr.add_api_route("/watchlist", _watch_list, methods=["GET"])
+    _rtr.add_api_route("/watchlist", _watch_add, methods=["POST"])
+    _rtr.add_api_route("/watchlist/{ticker}", _watch_get, methods=["GET"])
+    _rtr.add_api_route("/watchlist/{ticker}", _watch_delete, methods=["DELETE"])
+    # ── 执行层：盘中预警事件 ──
+    _rtr.add_api_route("/events", _events_recent, methods=["GET"])
+    _rtr.add_api_route("/events/{event_id}/ack", _events_ack, methods=["POST"])
+    _rtr.add_api_route("/events/clear", _events_clear, methods=["POST"])
+    _rtr.add_api_route("/monitor/check", _monitor_check, methods=["POST"])
+    # ── 执行层：操作计划 ──
+    _rtr.add_api_route("/plans", _plan_list, methods=["GET"])
+    _rtr.add_api_route("/plans/{ticker}", _plan_get, methods=["GET"])
+    _rtr.add_api_route("/plans/{ticker}", _plan_build, methods=["POST"])
+    _rtr.add_api_route("/plans/{ticker}", _plan_delete, methods=["DELETE"])
+    # ── 执行层：跨会话记忆 ──
+    _rtr.add_api_route("/memory/{ticker}", _mem_recall, methods=["GET"])
+    _rtr.add_api_route("/memory/{ticker}", _mem_remember, methods=["POST"])
+    _rtr.add_api_route("/memory/{ticker}/summary", _mem_summary_get, methods=["GET"])
+    _rtr.add_api_route("/memory/{ticker}/summary", _mem_summary_set, methods=["POST"])
+    _rtr.add_api_route("/memory/{ticker}/rounds", _mem_rounds, methods=["GET"])

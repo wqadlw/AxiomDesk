@@ -1,4 +1,4 @@
-"""UZI 投研终端 · FastAPI 应用工厂。
+"""AxiomDesk 公理级投研终端 · FastAPI 应用工厂。
 
 运行：
     python -m server.app                 # 开发/本地
@@ -63,9 +63,14 @@ WEB_DIR = _resolve_web_dir()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log = get_logger("app")
-    log.info("UZI 投研终端启动 | host=%s port=%s data_source=%s", settings.host, settings.port, settings.data_source)
+    log.info(
+        "AxiomDesk 公理级投研终端启动 | host=%s port=%s data_source=%s",
+        settings.host,
+        settings.port,
+        settings.data_source,
+    )
     yield
-    log.info("UZI 投研终端关闭")
+    log.info("AxiomDesk 公理级投研终端关闭")
 
 
 def create_app() -> FastAPI:
@@ -103,7 +108,7 @@ app = create_app()
 
 
 def run() -> None:
-    """控制台入口（``pip install`` 后可用 ``uzi-terminal`` 启动）。"""
+    """控制台入口（``pip install`` 后可用 ``axiomdesk`` 启动）。"""
     import uvicorn
 
     uvicorn.run(
