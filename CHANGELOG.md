@@ -3,6 +3,20 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.6.0] — 2026-08-18
+
+### 新功能：综合研报生成器（融合 daily_stock_analysis 报告结构 + TradingAgents research_report 范式）
+- 新增端点 `GET /api/research-report`（双前缀）：把全维度能力「融合贯通」为一份专业投研报告。
+  - 给定 `ticker` → **个股深度研报**：聚合个股全景诊断（六维）+ 五档资金流 + 财经日历 + 风险标签 + 该标的信号胜率，输出综合研判横幅 + 六维评分卡 + 风险提示 + 一段可直接复制的专业 Markdown。
+  - 缺省 `ticker` → **市场日报**：聚合盘后速览（情绪 / 连板 / 板块 / 龙虎榜 / 风控）+ 高可靠信号亮点 + 财经日历。
+  - `fmt=markdown` 仅返回 Markdown 文本，便于导出 / 接入笔记与协作工具。
+- 前端「**研报**」Tab：输入代码（或留空生成市场日报）→ 一键生成 → 结构化渲染 + 「复制 Markdown」按钮。
+- 本功能直接落地 Roadmap 的「报告导出（Markdown）」目标，是分散研判向统一交付的「融合贯通」收口。
+
+### 工程
+- API 版本 `3.5.0 → 3.6.0`；新增 `server/services/research_report.py` 及测试 `test_research_report.py`。
+- 质量门禁全绿：ruff(lint+format) · mypy(62 文件) · pytest(82%) · bandit(0 High) · node --check。
+
 ## [3.5.0] — 2026-08-18
 
 ### 新功能：个股全景诊断（融合 daily_stock_analysis decision_scale + TradingAgents 五级评级 + aiagents-stock 五维加权）

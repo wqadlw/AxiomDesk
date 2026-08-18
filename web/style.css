@@ -562,8 +562,29 @@ code { background: var(--panel-3); padding: 1px 6px; border-radius: 5px; font-si
 .sq-rel.ok { color: #21c08a; font-weight: 800; }
 .sq-rel { color: var(--dim); }
 
+/* ── 综合研报 ── */
+.rr-banner { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-radius: 12px; background: linear-gradient(135deg, var(--bg-2), var(--bg-3)); border: 1px solid var(--border); margin-bottom: 14px; }
+.rr-banner.chg-pos { border-color: rgba(214, 64, 48, .5); background: linear-gradient(135deg, rgba(214,64,48,.12), var(--bg-3)); }
+.rr-banner.chg-neg { border-color: rgba(38, 166, 92, .5); background: linear-gradient(135deg, rgba(38,166,92,.12), var(--bg-3)); }
+.rr-act { font-size: 22px; font-weight: 800; }
+.rr-score { margin-left: auto; font-size: 15px; color: var(--dim); }
+.rr-concl { font-size: 14px; line-height: 1.7; color: var(--text); margin: 0 2px 16px; }
+.rr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.rr-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.rr-card-h { font-size: 12px; color: var(--dim); }
+.rr-card-v { font-size: 24px; font-weight: 800; margin: 4px 0; }
+.rr-card-n { font-size: 12px; color: var(--dim); line-height: 1.4; }
+.rr-risks { margin-bottom: 16px; }
+.rr-risks-h { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #d64030; }
+.rr-risk { font-size: 13px; color: var(--text); padding: 4px 0; border-bottom: 1px dashed var(--border); }
+.rr-md-wrap { margin-top: 6px; }
+.rr-md-h { font-size: 13px; font-weight: 700; color: var(--dim); margin-bottom: 6px; }
+.rr-md { background: var(--bg-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow: auto; color: var(--text); }
+
 @media (max-width: 640px) {
   .dx-dims { grid-template-columns: 1fr; }
   .sq-th, .sq-tr { grid-template-columns: 1.3fr 0.7fr 0.55fr 0.7fr 0.7fr 0.7fr 0.7fr 0.7fr; font-size: 11px; }
+  .rr-grid { grid-template-columns: 1fr; }
+  .rr-banner { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
 

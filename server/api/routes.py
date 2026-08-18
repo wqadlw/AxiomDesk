@@ -40,6 +40,7 @@ from ..services import market_sentiment as MS
 from ..services import memory as MEM
 from ..services import monitor as MN
 from ..services import plan as PL
+from ..services import research_report as RR
 from ..services import risk_watch as RW
 from ..services import screener as SC
 from ..services import signal_quality as SQ
@@ -48,7 +49,7 @@ from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.5.0"
+API_VERSION = "3.6.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -577,6 +578,18 @@ def _signal_quality(
     return {"version": API_VERSION, **SQ.build_signal_quality(tickers=tickers, days=days)}
 
 
+def _research_report(
+    ticker: str | None = Query(None, description="标的代码（如 600519）；缺省则生成市场日报"),
+    fmt: str = Query("json", description="json=结构化+Markdown；markdown=仅返回 Markdown 文本"),
+):
+    """综合研报生成器（融合 daily_stock_analysis 报告结构 + TradingAgents research_report 范式）。
+
+    给定 ticker 生成个股深度研报（六维诊断 + 资金 + 事件 + 风险 + 信号胜率聚合）；
+    缺省生成市场日报（盘后速览 + 信号胜率亮点 + 财经日历）。支持 Markdown 导出。
+    """
+    return {"version": API_VERSION, **RR.build_research_report(ticker=ticker, fmt=fmt)}
+
+
 # 注册到两个路由对象
 for _rtr in (router, router_v1):
     _rtr.add_api_route("/health", _health, methods=["GET"])
@@ -640,3 +653,5 @@ for _rtr in (router, router_v1):
     _rtr.add_api_route("/diagnosis", _diagnosis, methods=["GET"])
     # ── 量化背书：信号历史胜率表（跨标的回测）──
     _rtr.add_api_route("/signal-quality", _signal_quality, methods=["GET"])
+    # ── 融合贯通：综合研报生成器（个股深度研报 / 市场日报 + Markdown 导出）──
+    _rtr.add_api_route("/research-report", _research_report, methods=["GET"])

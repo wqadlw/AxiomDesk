@@ -220,4 +220,4 @@ def test_api_memory_endpoints(client):
 
 
 def test_api_version_is_340(client):
-    assert client.get("/api/health").json()["version"] == "3.5.0"
+    assert client.get("/api/health").json()["version"] == "3.6.0"

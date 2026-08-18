@@ -55,6 +55,7 @@
       <button class="nav-btn digest-nav" data-tab="digest"><span class="ni">🗞</span>盘后速览</button>
       <button class="nav-btn diag-nav" data-tab="diagnosis"><span class="ni">🔍</span>个股诊断</button>
       <button class="nav-btn sq-nav" data-tab="signal-quality"><span class="ni">📊</span>信号胜率</button>
+      <button class="nav-btn rr-nav" data-tab="research"><span class="ni">📝</span>研报</button>
       <div class="nav-div"></div>
       <button class="nav-btn cf-nav" data-tab="capital"><span class="ni">💱</span>资金流向</button>
       <button class="nav-btn sent-nav" data-tab="sentiment"><span class="ni">🌡</span>市场情绪</button>
@@ -249,6 +250,24 @@
       </div>
     </section>
 
+    <!-- 融合贯通：综合研报生成器（个股深度研报 / 市场日报 + Markdown 导出） -->
+    <section id="research" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">综合研报</div>
+          <div class="rh-sub" id="rr-sub">把所有维度融合成一份专业研报：个股深度 / 市场日报 + 一键导出 Markdown</div>
+        </div>
+        <div class="rh-right">
+          <input id="rr-ticker" class="ghost-input sm" placeholder="代码 如 600519（留空=市场日报）" value="600519" />
+          <button id="rr-run" class="ghost-btn sm" title="生成研报">▶ 生成</button>
+          <button id="rr-copy" class="ghost-btn sm" title="复制 Markdown">⧉ 复制MD</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-research"></div>
+      </div>
+    </section>
+
     <!-- 资金面：个股五档资金流 / 板块资金榜 / 北向资金（融合 go-stock-dev + adata + a-stock-data） -->
     <section id="capital" class="report standalone" hidden>
       <div class="report-head">
@@ -324,7 +343,7 @@
     </section>
 
     <footer class="app-foot">
-      <span class="af-brand">AxiomDesk <b>v3.5.0</b> · 公理级投研终端</span>
+      <span class="af-brand">AxiomDesk <b>v3.6.0</b> · 公理级投研终端</span>
       <span class="af-note">数据可能为实时行情 / 估算推导 / 离线合成；研判可由 AI 驱动。本终端仅用于研究与学习，所有结论不构成任何投资建议。</span>
     </footer>
   </main>

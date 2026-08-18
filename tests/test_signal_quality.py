@@ -38,6 +38,6 @@ def test_signal_quality_api_dual_prefix():
         r = client.get(f"{prefix}/signal-quality")
         assert r.status_code == 200
         body = r.json()
-        assert body["version"] == "3.5.0"
+        assert body["version"] == "3.6.0"
         assert body["available"] is True
         assert len(body["signals"]) > 0

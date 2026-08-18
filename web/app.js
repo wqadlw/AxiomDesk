@@ -107,7 +107,7 @@
   }
 
   // ───────── 导航 ─────────
-  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest", screener: "screener", digest: "digest", diagnosis: "diagnosis", "signal-quality": "signal-quality", capital: "capital", sentiment: "sentiment", risk: "risk", calendar: "calendar" };
+  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest", screener: "screener", digest: "digest", diagnosis: "diagnosis", "signal-quality": "signal-quality", research: "research", capital: "capital", sentiment: "sentiment", risk: "risk", calendar: "calendar" };
   function setupNav() {
     $$("#nav .nav-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -128,6 +128,7 @@
           if (view === "digest") renderDailyDigest();
           if (view === "diagnosis") renderDiagnosis();
           if (view === "signal-quality") renderSignalQuality();
+          if (view === "research") renderResearchReport();
           if (view === "capital") renderCapitalFlow();
           if (view === "sentiment") renderSentiment();
           if (view === "risk") renderRiskWatch();
@@ -1551,6 +1552,60 @@
     }
   }
 
+  // ───────── 综合研报生成器（个股深度 / 市场日报 + Markdown 导出）─────────
+  let _rrMarkdown = "";
+  async function renderResearchReport() {
+    const panel = $("#tab-research");
+    const tk = ($("#rr-ticker").value || "").trim();
+    panel.innerHTML = '<div class="loading-title">正在融合多维度数据，生成综合研报…</div>';
+    try {
+      const url = `${api}/api/research-report` + (tk ? `?ticker=${encodeURIComponent(tk)}` : "");
+      const d = await (await fetch(url)).json();
+      if (!d.available) {
+        panel.innerHTML = `<div class="loading-title">生成失败：${esc(d.reason || "未知错误")}</div>`;
+        return;
+      }
+      _rrMarkdown = d.markdown || "";
+      const isSingle = d.type === "single_stock";
+      let html = "";
+      if (isSingle) {
+        const s = d.sections;
+        const v = s.verdict;
+        const actCls = (v.action_en === "strong_buy" || v.action_en === "buy") ? "chg-pos" : (v.action_en === "sell" || v.action_en === "reduce") ? "chg-neg" : "";
+        html += `<div class="rr-banner ${actCls}"><span class="rr-act">${esc(v.action)}</span><span class="rr-score">综合 ${v.composite}/100</span></div>`;
+        html += `<div class="rr-concl">${esc(v.conclusion)}</div>`;
+        html += '<div class="rr-grid">';
+        const _cn = { technical: "技术面", capital: "资金面", sentiment: "情绪面", valuation: "估值面", event: "事件面", risk: "风控面" };
+        for (const k of ["technical", "capital", "sentiment", "valuation", "event", "risk"]) {
+          const dim = s.dimensions[k] || {};
+          html += `<div class="rr-card"><div class="rr-card-h">${_cn[k]}</div><div class="rr-card-v">${dim.score ?? "—"}</div><div class="rr-card-n">${esc(dim.verdict || dim.note || "")}</div></div>`;
+        }
+        html += "</div>";
+        if (s.risk_flags && s.risk_flags.length) {
+          html += '<div class="rr-risks"><div class="rr-risks-h">风险提示</div>';
+          s.risk_flags.slice(0, 6).forEach(f => { html += `<div class="rr-risk">⚠️ ${esc(f)}</div>`; });
+          html += "</div>";
+        }
+      } else {
+        const s = d.sections;
+        if (s.sentiment) {
+          html += `<div class="rr-banner"><span class="rr-act">市场情绪</span><span class="rr-score">恐惧贪婪 ${s.sentiment.fear_greed ?? "—"} · ${esc(s.sentiment.fear_greed_band || "")}</span></div>`;
+        }
+        if (s.reliable_signals && s.reliable_signals.length) {
+          html += '<div class="rr-risks-h">高可靠信号（历史回测）</div><div class="rr-grid">';
+          s.reliable_signals.slice(0, 8).forEach(sig => {
+            html += `<div class="rr-card"><div class="rr-card-h">${esc(sig.name)}</div><div class="rr-card-v">${(sig.win_rate_10 * 100).toFixed(0)}%</div><div class="rr-card-n">10日胜率 · 样本 ${sig.samples}</div></div>`;
+          });
+          html += "</div>";
+        }
+      }
+      html += `<div class="rr-md-wrap"><div class="rr-md-h">Markdown 原文（可复制导出）</div><pre class="rr-md" id="rr-md">${esc(_rrMarkdown)}</pre></div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">生成失败：${esc(e.message)}</div>`;
+    }
+  }
+
   // ───────── 事件绑定 ─────────
   function bind() {
     $("#query").addEventListener("submit", e => { e.preventDefault(); runAnalysis($("#ticker").value); });
@@ -1572,6 +1627,21 @@
     $("#dx-run").addEventListener("click", () => { if (!$("#diagnosis").hidden) renderDiagnosis(); });
     $("#dx-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#diagnosis").hidden) renderDiagnosis(); });
     $("#sq-refresh").addEventListener("click", () => { if (!$("#signal-quality").hidden) renderSignalQuality(); });
+    $("#rr-run").addEventListener("click", () => { if (!$("#research").hidden) renderResearchReport(); });
+    $("#rr-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#research").hidden) renderResearchReport(); });
+    $("#rr-copy").addEventListener("click", async () => {
+      if (!_rrMarkdown) { toast("暂无可复制的研报内容"); return; }
+      try {
+        await navigator.clipboard.writeText(_rrMarkdown);
+        toast("已复制 Markdown 到剪贴板");
+      } catch (_) {
+        const ta = document.createElement("textarea");
+        ta.value = _rrMarkdown; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); toast("已复制 Markdown 到剪贴板"); }
+        catch (e2) { toast("复制失败：" + (e2.message || "未知错误")); }
+        document.body.removeChild(ta);
+      }
+    });
     $("#bt-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#backtest").hidden) renderBacktest(); });
     $("#cf-run").addEventListener("click", () => { if (!$("#capital").hidden) renderCapitalFlow(); });
     $("#cf-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#capital").hidden) renderCapitalFlow(); });
