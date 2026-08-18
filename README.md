@@ -65,12 +65,14 @@ flowchart TB
 - **市场情绪仪表盘**：`GET /api/sentiment` 输出恐惧贪婪指数（50 + (上涨占比−0.5)×60，5 档）+ 涨跌家数 / 涨跌停 / 炸板 / 量能热度 / 量比 + 定性情绪信号。前端「市场情绪」Tab 以半圆仪表盘可视化（融合自 aiagents-stock 恐惧贪婪指数方法论）。
 - **风险监控**：`GET /api/risk-watch` 个股级返回解禁减持压力（减持新规三条封杀线：破发 / 破净 / 分红不达标）+ 估值异常（PE>100 / PB>10）；市场级扫描样本池输出解禁压力 TOP 与估值异常清单。前端「风险监控」Tab 支持个股 / 市场级切换（融合自 TradingAgents 解禁减持风控体系）。
 - **财经日历**：`GET /api/event-calendar` 输出未来 N 日时间线——限售解禁 / 定向增发 / 分红派息 / 财报披露，按日期升序；支持个股级 / 市场级汇总。前端「财经日历」Tab 按事件类型配色呈现（融合自 stock-master 解禁/分红/定增爬虫 + aiagents-stock 事件风控）。
+- **个股全景诊断**：`GET /api/diagnosis?ticker=600519` 把技术面 / 资金面 / 情绪面 / 估值面 / 事件面 / 风控面六维融合为综合研判卡（0~100 各维评分 → 加权综合分 → 五档动作：强烈买入/买入/观望/减仓/卖出），附连板高度、游资评级、多空信号、风险提示清单。前端「个股诊断」Tab 一键生成（融合 daily_stock_analysis decision_scale + TradingAgents 五级评级 + aiagents-stock 五维加权）。
+- **信号胜率表**：`GET /api/signal-quality` 遍历演示 universe 逐 bar 前缀回测，统计 18 个形态信号触发后 N=5/10/20 日的前瞻收益（样本数 / 胜率 / 平均收益 / 高可靠标注）。前端「信号胜率」Tab 按胜率降序排行（融合 tickflow factor.py 历史回测 + instock rate_stats）。
 - **实证策略信号**：18 个实战形态信号（含 KDJ / BOLL / RSI / CCI / OBV / 筹码分布 CYQ / RPS 相对强度），每个信号附 1/5/20 日**历史胜率回测**，标注「实证可信 / 实证偏弱」；前端「信号回测」Tab 可对单只标的运行回放、绘制演示净值曲线（总收益 / 最大回撤 / 夏普），融合自 tickflow 回测可视化 + instock rate_stats。
 - **游资专精分析**：龙虎榜席位 / 净买 / 机构 / 主力五维确定性打分（0~100），作为 AI 研判的「第二轨」校验锚点；游资派买入区间由 POC 与净买额真实计算。另设 `GET /api/longhubang` 端点与「连板梯队」Tab 内嵌的龙虎榜评分卡片（资金含金量 / 净流入 / 抛压 / 机构共振 / 顶级游资席位命中五维加权，给出抢筹档位与席位标签），融合自 aiagents-stock 的 longhubang_scoring 体系。
 - **执行层闭环**：自选股实时盈亏 → 多情景操作计划（入场区 / 止损 / 目标 / RR / 仓位）→ 盘中 5 类事件预警（30 分钟去重），配「自选·监控」前端面板。
 - **跨会话记忆**：每只股票独立沉淀「事实 / 观点 / 决策」记忆（SQLite），下次分析自动回填给 AI 研判层，保持决策连续性。
 - **AI 研判层**：接入真实 DeepSeek（OpenAI 兼容协议，零额外 SDK）；无 Key 时自动降级为离线「模板研判」，结论含数字引用与「但是」结构，并新增**辩论主持人收束**（条件化执行结论）。
-- **彭博风终端**：原生 JS / CSS 前端（无构建步骤），红涨绿跌（中国习惯），20 个 Tab 全景呈现分析结论。
+- **彭博风终端**：原生 JS / CSS 前端（无构建步骤），红涨绿跌（中国习惯），22 个 Tab 全景呈现分析结论。
 - **工程化就绪**：FastAPI 版本化 API（`/api` + `/api/v1`）、结构化日志与 Request-ID、异步任务 + SQLite 历史、横向对比、Docker / Compose / Makefile / CI。
 
 ---
@@ -80,7 +82,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph Browser["浏览器 (web/ 原生 JS/CSS · 红涨绿跌)"]
-        UI[彭博风终端 · 20 Tab · 含「自选·监控 / 连板梯队 / 板块轮动 / 信号回测 / 选股 / 盘后速览 / 资金流向 / 市场情绪 / 风险监控 / 财经日历」]
+        UI[彭博风终端 · 22 Tab · 含「自选·监控 / 连板梯队 / 板块轮动 / 信号回测 / 选股 / 盘后速览 / 资金流向 / 市场情绪 / 风险监控 / 财经日历 / 个股诊断 / 信号胜率」]
     end
     subgraph API["FastAPI 应用 (server/app.py)"]
         R[api/routes.py<br/>版本化路由 · 统一异常 · CORS · Request-ID]
@@ -229,6 +231,8 @@ start.bat         # Windows 双击
 | GET  | `/api/sentiment` | 市场情绪：恐惧贪婪指数 + 涨跌停统计 + 量能热度（融合 aiagents-stock 恐惧贪婪指数方法论） |
 | GET  | `/api/risk-watch?ticker=600519` | 风险监控：解禁减持三条封杀线 + 估值异常扫描（融合 TradingAgents 解禁减持风控） |
 | GET  | `/api/event-calendar?days=30` | 财经日历：解禁 / 定增 / 分红 / 财报时间线（融合 stock-master 解禁/分红/定增爬虫） |
+| GET  | `/api/diagnosis?ticker=600519` | 个股全景诊断：六维融合综合研判卡（技术/资金/情绪/估值/事件/风控 → 加权 → 五档动作，融合 daily_stock_analysis + TradingAgents） |
+| GET  | `/api/signal-quality` | 信号胜率表：跨标的逐 bar 回测 18 信号 N 日胜率 / 平均收益 / 高可靠标注（融合 tickflow factor.py + instock rate_stats） |
 
 完整请求 / 响应示例见 [docs/API.md](docs/API.md)。
 
@@ -320,6 +324,8 @@ ruff format --check server/ tests/
 - [x] 市场情绪仪表盘（恐惧贪婪指数 / 涨跌停统计 / 量能热度）
 - [x] 风险监控（解禁减持三条封杀线 / 估值异常扫描）
 - [x] 财经日历（解禁 / 定增 / 分红 / 财报时间线）
+- [x] 个股全景诊断（六维加权综合研判卡 → 五档动作 + 风险提示）
+- [x] 信号胜率表（跨标的逐 bar 回测 18 信号 N 日胜率 + 高可靠标注）
 - [ ] 财务数据真实化（接入财报接口补全营收 / 净利 / ROE 等）
 - [ ] 报告导出（PDF / Markdown）
 - [ ] 报告对比快照（同一标的跨日 diff）

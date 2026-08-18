@@ -53,6 +53,8 @@
       <button class="nav-btn backtest-nav" data-tab="backtest"><span class="ni">📈</span>信号回测</button>
       <button class="nav-btn screener-nav" data-tab="screener"><span class="ni">🎯</span>选股</button>
       <button class="nav-btn digest-nav" data-tab="digest"><span class="ni">🗞</span>盘后速览</button>
+      <button class="nav-btn diag-nav" data-tab="diagnosis"><span class="ni">🔍</span>个股诊断</button>
+      <button class="nav-btn sq-nav" data-tab="signal-quality"><span class="ni">📊</span>信号胜率</button>
       <div class="nav-div"></div>
       <button class="nav-btn cf-nav" data-tab="capital"><span class="ni">💱</span>资金流向</button>
       <button class="nav-btn sent-nav" data-tab="sentiment"><span class="ni">🌡</span>市场情绪</button>
@@ -214,6 +216,39 @@
       </div>
     </section>
 
+    <!-- 融合贯通：个股全景诊断（六维综合研判卡） -->
+    <section id="diagnosis" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">个股全景诊断</div>
+          <div class="rh-sub" id="dx-sub">六维融合综合研判：技术 · 资金 · 情绪 · 估值 · 事件 · 风控</div>
+        </div>
+        <div class="rh-right">
+          <input id="dx-ticker" class="ghost-input sm" placeholder="代码 如 600519" value="600519" />
+          <button id="dx-run" class="ghost-btn sm" title="生成个股诊断">▶ 诊断</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-diagnosis"></div>
+      </div>
+    </section>
+
+    <!-- 量化背书：信号历史胜率表（跨标的回测） -->
+    <section id="signal-quality" class="report standalone" hidden>
+      <div class="report-head">
+        <div class="rh-left">
+          <div class="rh-name">信号胜率表</div>
+          <div class="rh-sub" id="sq-sub">18 个形态信号的历史胜率与平均收益（跨标的回测）</div>
+        </div>
+        <div class="rh-right">
+          <button id="sq-refresh" class="ghost-btn sm" title="重新计算信号胜率">⟳ 计算</button>
+        </div>
+      </div>
+      <div class="tab-body">
+        <div class="tab-panel" id="tab-signal-quality"></div>
+      </div>
+    </section>
+
     <!-- 资金面：个股五档资金流 / 板块资金榜 / 北向资金（融合 go-stock-dev + adata + a-stock-data） -->
     <section id="capital" class="report standalone" hidden>
       <div class="report-head">
@@ -289,7 +324,7 @@
     </section>
 
     <footer class="app-foot">
-      <span class="af-brand">AxiomDesk <b>v3.4.0</b> · 公理级投研终端</span>
+      <span class="af-brand">AxiomDesk <b>v3.5.0</b> · 公理级投研终端</span>
       <span class="af-note">数据可能为实时行情 / 估算推导 / 离线合成；研判可由 AI 驱动。本终端仅用于研究与学习，所有结论不构成任何投资建议。</span>
     </footer>
   </main>

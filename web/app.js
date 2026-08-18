@@ -107,7 +107,7 @@
   }
 
   // ───────── 导航 ─────────
-  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest", screener: "screener", digest: "digest", capital: "capital", sentiment: "sentiment", risk: "risk", calendar: "calendar" };
+  const STANDALONE = { ladder: "market", sector: "sector", backtest: "backtest", screener: "screener", digest: "digest", diagnosis: "diagnosis", "signal-quality": "signal-quality", capital: "capital", sentiment: "sentiment", risk: "risk", calendar: "calendar" };
   function setupNav() {
     $$("#nav .nav-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -126,6 +126,8 @@
           if (view === "backtest") renderBacktest();
           if (view === "screener") renderScreener();
           if (view === "digest") renderDailyDigest();
+          if (view === "diagnosis") renderDiagnosis();
+          if (view === "signal-quality") renderSignalQuality();
           if (view === "capital") renderCapitalFlow();
           if (view === "sentiment") renderSentiment();
           if (view === "risk") renderRiskWatch();
@@ -1449,6 +1451,106 @@
     }
   }
 
+  // ───────── 个股全景诊断（六维综合研判卡）─────────
+  async function renderDiagnosis() {
+    const panel = $("#tab-diagnosis");
+    const ticker = ($("#dx-ticker").value || "600519").trim();
+    panel.innerHTML = '<div class="loading-title">正在生成个股全景诊断…</div>';
+    try {
+      const d = await (await fetch(`${api}/api/diagnosis?ticker=${encodeURIComponent(ticker)}`)).json();
+      if (!d.available) {
+        panel.innerHTML = `<div class="loading-title">诊断失败：${esc(d.reason || "未知错误")}</div>`;
+        return;
+      }
+      const dims = d.dimensions || {};
+      const actionColor = { strong_buy: "#21c08a", buy: "#6fcf97", hold: "#f5a623", reduce: "#ef9b4d", sell: "#e85d5d" }[d.action_en] || "#f5a623";
+      let html = `<div class="dx-head">`;
+      html += `<div class="dx-title">${esc(d.name)} <i>${esc(d.ticker)}</i></div>`;
+      html += `<div class="dx-action" style="background:${actionColor}">${esc(d.action)} · <b>${d.composite}</b></div>`;
+      html += `</div>`;
+      html += `<div class="dx-conclusion">${esc(d.conclusion)}</div>`;
+      html += `<div class="dx-dims">`;
+      const dim = (key, label, color) => {
+        const dd = dims[key] || {};
+        const sc = dd.score ?? 0;
+        return `<div class="dx-dim"><div class="dx-dim-h"><span class="dx-dim-label">${label}</span><span class="dx-dim-score" style="color:${color}">${sc}</span></div><div class="dx-bar"><span style="width:${sc}%"></span></div><div class="dx-dim-detail">${esc(dd.note || "")}</div></div>`;
+      };
+      html += dim("technical", "技术面 (信号/RPS/动量)", "#6fcf97");
+      html += dim("capital", "资金面 (主力净流入)", "#4ea3ff");
+      html += dim("sentiment", "情绪面 (恐惧贪婪)", "#f5a623");
+      html += dim("valuation", "估值面 (PE/PB 合理性)", "#b48ef5");
+      html += dim("event", "事件面 (解禁/分红/财报)", "#ef9b4d");
+      html += dim("risk", "风控面 (解禁减持/异常)", "#e85d5d");
+      html += `</div>`;
+      const lu = d.limit_up, lb = d.longhubang;
+      if (lu || lb) {
+        html += `<div class="dx-extra">`;
+        if (lu) html += `<span class="dx-chip">连板高度：<b>${lu.boards ?? "?"}</b> 板</span>`;
+        if (lb) html += `<span class="dx-chip">游资评级：<b>${esc(lb.tier || "—")}</b> (${lb.total ?? "—"})</span>`;
+        html += `</div>`;
+      }
+      if (d.risk_flags && d.risk_flags.length) {
+        html += `<div class="dx-flags"><div class="dx-flags-h">⚠ 风险提示</div>`;
+        d.risk_flags.forEach(f => { html += `<div class="dx-flag">${esc(f)}</div>`; });
+        html += `</div>`;
+      }
+      const bull = (d.bull_signals || []).map(x => `<span class="sc-sig">${esc(x)}</span>`).join("");
+      const bear = (d.bear_signals || []).map(x => `<span class="sc-sig bear">${esc(x)}</span>`).join("");
+      if (bull || bear) {
+        html += `<div class="dx-sigs">`;
+        if (bull) html += `<div class="dx-sig-row"><span class="dx-sig-h">多头信号</span>${bull}</div>`;
+        if (bear) html += `<div class="dx-sig-row"><span class="dx-sig-h">空头信号</span>${bear}</div>`;
+        html += `</div>`;
+      }
+      html += `<div class="ladder-note">${esc(d.note || "")}</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">诊断失败：${esc(e.message)}</div>`;
+    }
+  }
+
+  // ───────── 信号胜率表（跨标的回测）─────────
+  async function renderSignalQuality() {
+    const panel = $("#tab-signal-quality");
+    panel.innerHTML = '<div class="loading-title">正在回测 18 个形态信号的历史胜率…</div>';
+    try {
+      const d = await (await fetch(`${api}/api/signal-quality`)).json();
+      if (!d.available) {
+        panel.innerHTML = `<div class="loading-title">计算失败：${esc(d.reason || "未知错误")}</div>`;
+        return;
+      }
+      const sigs = d.signals || [];
+      const sideCN = (s) => (s === "bullish" ? "多头" : s === "bearish" ? "空头" : "中性");
+      const wr = (v) => (v != null ? (v * 100).toFixed(0) + "%" : "—");
+      let html = `<div class="ladder-note">基于 ${d.universe_size ?? "?"} 只标的逐 bar 回测（触发点后 N 日收益）。样本数 ≥30 且 10 日胜率 ≥55% 标记为「高可靠」。</div>`;
+      if (!sigs.length) {
+        html += '<div class="ladder-note">暂无信号统计。</div>';
+      } else {
+        html += `<div class="sq-table"><div class="sq-th"><span>信号</span><span>方向</span><span>样本</span><span>5日胜率</span><span>10日胜率</span><span>20日胜率</span><span>10日均值</span><span>可靠性</span></div>`;
+        sigs.forEach(s => {
+          const rel = s.reliable ? '<span class="sq-rel ok">高可靠</span>' : '<span class="sq-rel">—</span>';
+          const side = sideCN(s.side);
+          const sideCls = s.side === "bullish" ? "chg-pos" : s.side === "bearish" ? "chg-neg" : "";
+          html += `<div class="sq-tr ${s.reliable ? "reliable" : ""}">`;
+          html += `<span class="sq-name">${esc(s.name)}</span>`;
+          html += `<span class="sq-side ${sideCls}">${side}</span>`;
+          html += `<span class="sq-n">${s.samples ?? 0}</span>`;
+          html += `<span class="sq-wr">${wr(s.win_rate_5)}</span>`;
+          html += `<span class="sq-wr">${wr(s.win_rate_10)}</span>`;
+          html += `<span class="sq-wr">${wr(s.win_rate_20)}</span>`;
+          html += `<span class="sq-avg ${s.avg_return_10 >= 0 ? "chg-pos" : "chg-neg"}">${pct(s.avg_return_10)}</span>`;
+          html += `<span class="sq-rel-cell">${rel}</span>`;
+          html += `</div>`;
+        });
+        html += `</div>`;
+      }
+      html += `<div class="ladder-note">${esc(d.note || "")}</div>`;
+      panel.innerHTML = html;
+    } catch (e) {
+      panel.innerHTML = `<div class="loading-title">计算失败：${esc(e.message)}</div>`;
+    }
+  }
+
   // ───────── 事件绑定 ─────────
   function bind() {
     $("#query").addEventListener("submit", e => { e.preventDefault(); runAnalysis($("#ticker").value); });
@@ -1467,6 +1569,9 @@
     $("#sc-universe").addEventListener("change", () => { if (!$("#screener").hidden) renderScreener(); });
     $("#sc-sort").addEventListener("change", () => { if (!$("#screener").hidden) renderScreener(); });
     $("#dg-refresh").addEventListener("click", () => { if (!$("#digest").hidden) renderDailyDigest(); });
+    $("#dx-run").addEventListener("click", () => { if (!$("#diagnosis").hidden) renderDiagnosis(); });
+    $("#dx-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#diagnosis").hidden) renderDiagnosis(); });
+    $("#sq-refresh").addEventListener("click", () => { if (!$("#signal-quality").hidden) renderSignalQuality(); });
     $("#bt-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#backtest").hidden) renderBacktest(); });
     $("#cf-run").addEventListener("click", () => { if (!$("#capital").hidden) renderCapitalFlow(); });
     $("#cf-ticker").addEventListener("keydown", e => { if (e.key === "Enter" && !$("#capital").hidden) renderCapitalFlow(); });

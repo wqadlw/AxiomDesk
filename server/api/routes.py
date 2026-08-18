@@ -42,11 +42,13 @@ from ..services import monitor as MN
 from ..services import plan as PL
 from ..services import risk_watch as RW
 from ..services import screener as SC
+from ..services import signal_quality as SQ
+from ..services import stock_diagnosis as DX
 from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.4.0"
+API_VERSION = "3.5.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -555,6 +557,26 @@ def _event_calendar(
     return {"version": API_VERSION, **EC.build_event_calendar(ticker=ticker, days=days)}
 
 
+def _diagnosis(ticker: str = Query(..., description="标的代码，如 600519")):
+    """个股全景诊断（融合 daily_stock_analysis decision_scale + TradingAgents 五级评级 + aiagents-stock 五维加权）。
+
+    把技术/RPS/资金/情绪/估值/事件/风控/连板/龙虎榜融合为「综合研判卡」：
+    六维评分 → 加权综合分 → 五档动作（强烈买入/买入/观望/减仓/卖出）+ 结论 + 风险提示。
+    """
+    return {"version": API_VERSION, **DX.build_diagnosis(ticker=ticker)}
+
+
+def _signal_quality(
+    tickers: str | None = Query(None, description="逗号分隔代码列表；缺省用内置演示池（跨标的统计更稳）"),
+    days: int = Query(130, description="回测所用 K 线天数", ge=80, le=400),
+):
+    """信号胜率表（融合 tickflow factor.py + instock rate_stats）。
+
+    遍历股票池逐 bar 回测 18 个形态信号，统计触发后 N=5/10/20 日胜率与平均收益，标注高可靠信号。
+    """
+    return {"version": API_VERSION, **SQ.build_signal_quality(tickers=tickers, days=days)}
+
+
 # 注册到两个路由对象
 for _rtr in (router, router_v1):
     _rtr.add_api_route("/health", _health, methods=["GET"])
@@ -614,3 +636,7 @@ for _rtr in (router, router_v1):
     _rtr.add_api_route("/risk-watch", _risk_watch, methods=["GET"])
     # ── 事件面：财经日历（融合 stock-master 解禁/分红/定增爬虫）──
     _rtr.add_api_route("/event-calendar", _event_calendar, methods=["GET"])
+    # ── 融合贯通：个股全景诊断（六维综合研判卡）──
+    _rtr.add_api_route("/diagnosis", _diagnosis, methods=["GET"])
+    # ── 量化背书：信号历史胜率表（跨标的回测）──
+    _rtr.add_api_route("/signal-quality", _signal_quality, methods=["GET"])

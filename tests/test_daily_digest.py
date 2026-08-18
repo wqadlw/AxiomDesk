@@ -6,7 +6,7 @@ import pytest
 @pytest.mark.parametrize("prefix", ["/api", "/api/v1"])
 def test_daily_digest_structure(client, prefix):
     d = client.get(f"{prefix}/daily-digest").json()
-    assert d["version"] == "3.4.0"
+    assert d["version"] == "3.5.0"
     # 关键聚合字段存在（即使子模块为空也应返回结构化默认）
     assert "emotion" in d
     assert "hot_sectors" in d

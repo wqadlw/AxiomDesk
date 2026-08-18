@@ -3,6 +3,21 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.5.0] — 2026-08-18
+
+### 新功能：个股全景诊断（融合 daily_stock_analysis decision_scale + TradingAgents 五级评级 + aiagents-stock 五维加权）
+- 新增端点 `GET /api/diagnosis`（双前缀）：对单只标的生成六维融合综合研判卡——技术面(30%) / 资金面(20%) / 情绪面(15%) / 估值面(15%) / 事件面(10%) / 风控面(10%)，各维 0~100 评分 → 加权综合分 → 五档动作（强烈买入 / 买入 / 观望 / 减仓 / 卖出）+ 一句话结论 + 风险提示清单。
+- 附：连板高度、游资评级作为「盘面亮点」；多空信号、RPS、动量、主力资金、估值异常全量聚合。
+- 前端「**个股诊断**」Tab：输入代码 → 六维评分卡 + 综合动作横幅 + 风险标签 + 盘面亮点。
+
+### 新功能：信号胜率表（融合 tickflow factor.py 历史回测 + instock rate_stats）
+- 新增端点 `GET /api/signal-quality`（双前缀）：遍历演示 universe（24 只）逐 bar 前缀回测（step=2），统计 18 个形态信号触发后 N=5/10/20 日的前瞻收益，输出每信号样本数 / 多空方向 / 胜率 / 平均收益，标注高可靠信号（samples≥30 且 10日胜率≥55%）。
+- 前端「**信号胜率**」Tab：信号胜率排行表，按 10 日胜率降序，可靠信号高亮，支持自定义标的池。
+
+### 工程
+- API 版本 `3.4.0 → 3.5.0`；新增 `server/services/stock_diagnosis.py`、`signal_quality.py` 及测试 `test_stock_diagnosis.py` / `test_signal_quality.py`。
+- 质量门禁全绿：ruff(lint+format) · mypy(61 文件) · pytest(82%) · bandit(0 High) · node --check。
+
 ## [3.4.0] — 2026-08-17
 
 ### 新功能：资金流向面板（融合 go-stock-dev 资金流面板 + adata 五档资金流 + a-stock-data 板块资金流）
