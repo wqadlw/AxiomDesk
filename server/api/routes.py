@@ -26,6 +26,7 @@ from ..config_store import (
     reset_config,
     set_config,
 )
+from ..engine import data_provider as DP
 from ..engine import engine
 from ..engine import investors as INV
 from ..jobs import get_store
@@ -49,7 +50,7 @@ from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.6.0"
+API_VERSION = "3.7.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -590,6 +591,73 @@ def _research_report(
     return {"version": API_VERSION, **RR.build_research_report(ticker=ticker, fmt=fmt)}
 
 
+def _kline(
+    ticker: str = Query(..., description="标的代码，如 600519"),
+    days: int = Query(120, description="K 线天数", ge=20, le=400),
+):
+    """个股日 K 线 OHLCV（融合 tickflow K 线可视化）：前复权日线 + 5/10/20 日均线，供前端绘制蜡烛图。
+
+    任何网络失败都回退到确定性 demo K 线，永不中断。
+    """
+    raw = DP.get_kline(ticker, days=days)
+    if not raw:
+        return {
+            "version": API_VERSION,
+            "available": False,
+            "ticker": ticker,
+            "reason": "无 K 线数据",
+            "kline": [],
+            "ma": {"ma5": [], "ma10": [], "ma20": []},
+        }
+    # 统一保证时间升序（兼容各 provider 不同的返回顺序）
+    raw = sorted(raw, key=lambda r: str(r.get("date", "")))
+
+    def _num(v, default: float = 0.0) -> float:
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return default
+
+    kline = [
+        {
+            "date": str(r.get("date") or ""),
+            "open": _num(r.get("open")),
+            "high": _num(r.get("high")),
+            "low": _num(r.get("low")),
+            "close": _num(r.get("close")),
+            "volume": _num(r.get("volume")),
+        }
+        for r in raw
+    ]
+    closes: list[float] = [_num(r["close"]) for r in kline]
+    def _ma(n: int) -> list[float | None]:
+        out: list[float | None] = []
+        for i in range(len(closes)):
+            if i + 1 < n:
+                out.append(None)
+            else:
+                seg = closes[i + 1 - n : i + 1]
+                out.append(round(sum(seg) / n, 2))
+        return out
+
+    prof: dict = {}
+    try:
+        prof = DP.get_profile(ticker) or {}
+    except Exception:
+        prof = {}
+    return {
+        "version": API_VERSION,
+        "available": True,
+        "ticker": ticker,
+        "name": prof.get("name"),
+        "price": prof.get("price"),
+        "source": prof.get("source"),
+        "days": days,
+        "kline": kline,
+        "ma": {"ma5": _ma(5), "ma10": _ma(10), "ma20": _ma(20)},
+    }
+
+
 # 注册到两个路由对象
 for _rtr in (router, router_v1):
     _rtr.add_api_route("/health", _health, methods=["GET"])
@@ -655,3 +723,5 @@ for _rtr in (router, router_v1):
     _rtr.add_api_route("/signal-quality", _signal_quality, methods=["GET"])
     # ── 融合贯通：综合研报生成器（个股深度研报 / 市场日报 + Markdown 导出）──
     _rtr.add_api_route("/research-report", _research_report, methods=["GET"])
+    # ── 个股级：日 K 线 OHLCV + 均线（融合 tickflow K 线可视化）──
+    _rtr.add_api_route("/kline", _kline, methods=["GET"])

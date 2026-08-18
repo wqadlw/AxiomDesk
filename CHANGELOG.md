@@ -3,6 +3,16 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.7.0] — 2026-08-18
+
+### 重大重构：专业级前端（量化终端标准）
+- **整体重写 `web/index.html` / `web/style.css` / `web/app.js`**：对标 tickflow-stock-panel 的量化终端设计，融合 `经验学习` 多项目优点（设计 token、骨架屏、等宽数字、空/错/加载态、分区横幅、卡片悬浮辉光、红涨绿跌与语义色解耦），在原有能力基础上全面升级视觉层级与交互细节。
+- **引入本地 ECharts 5**（离线 `web/vendor/echarts.min.js`，无 CDN 依赖）：蜡烛图（K 线 + MA5/10/20）、估值三角、雷达、仪表盘、资金五档、板块条形、回测净值曲线等图表全部本地渲染，主题切换时统一销毁重建。
+- **新增端点 `GET /api/kline`（双前缀）**：个股前复权日 K 线 OHLCV + 5/10/20 日均线，任何网络失败回退确定性 demo 数据，供前端蜡烛图使用。
+- **侧边分组导航 + 顶栏面包屑 + 实时徽标 + 主题切换**：23 个视图统一 `data-tab` 与分区 id，导航/报告 Tab 切换与图表生命周期管理收敛到单一渲染中枢（`rerenderActive`）。
+- **可排序表格组件 `makeSortable`** 修复（按行渲染函数重建，而非清空），板块/选股表支持点击表头三态排序。
+- 质量门禁全绿：ruff(lint+format) · mypy(62 文件) · pytest · bandit(0 High) · node --check。
+
 ## [3.6.0] — 2026-08-18
 
 ### 新功能：综合研报生成器（融合 daily_stock_analysis 报告结构 + TradingAgents research_report 范式）

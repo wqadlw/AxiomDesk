@@ -1,352 +1,384 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AxiomDesk · 公理级投研终端</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23070b12'/><polygon points='16,6 26,16 16,26 6,16' fill='none' stroke='%23f5a623' stroke-width='2.5'/></svg>" />
-  <meta name="description" content="AxiomDesk 公理级投研终端：四层研判（市场情绪 / 策略指标 / 执行闭环 / 智能增强），66 位投资大佬陪审团 × 20 维框架 × DCF/Comps/LBO 估值 × 游资双轨评分 × 跨会话记忆。仅供研究，非投资建议。" />
-  <meta name="theme-color" content="#070b12" />
-  <meta name="color-scheme" content="dark" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230b0e14'/><path d='M7 22 L13 12 L18 18 L25 8' fill='none' stroke='%237c5cff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/><circle cx='25' cy='8' r='2.4' fill='%237c5cff'/></svg>" />
+  <meta name="description" content="AxiomDesk 公理级投研终端：市场情绪 → 策略指标 → 执行闭环 → 智能增强 四层研判，66 位投资大佬陪审团 × 20 维框架 × DCF/Comps/LBO 估值 × 游资双轨评分 × 跨会话记忆。仅供研究，非投资建议。" />
+  <meta name="theme-color" content="#0b0e14" />
+  <meta name="color-scheme" content="dark light" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="brand">
-      <span class="logo">◈</span>
-      <div>
-        <div class="brand-name">AxiomDesk</div>
-        <div class="brand-sub">公理级投研终端 · 66 位投资大佬 · 四层研判</div>
+  <!-- 图标雪碧图 -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <g id="ico" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+        <symbol id="i-pipeline" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+        <symbol id="i-dims" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+        <symbol id="i-jury" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+        <symbol id="i-valuation" viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></symbol>
+        <symbol id="i-debate" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+        <symbol id="i-zones" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+        <symbol id="i-risks" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+        <symbol id="i-trap" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+        <symbol id="i-desk" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+        <symbol id="i-ladder" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+        <symbol id="i-sector" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+        <symbol id="i-digest" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><line x1="18" y1="14" x2="18" y2="18"/><line x1="16" y1="16" x2="20" y2="16"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/></symbol>
+        <symbol id="i-screener" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+        <symbol id="i-backtest" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+        <symbol id="i-signal" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></symbol>
+        <symbol id="i-capital" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
+        <symbol id="i-risk" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></symbol>
+        <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+        <symbol id="i-config" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+        <symbol id="i-sentiment" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+        <symbol id="i-diagnosis" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></symbol>
+        <symbol id="i-research" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="16 2 16 8 22 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+        <symbol id="i-run" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></symbol>
+        <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><polyline points="12 7 12 12 15 15"/></symbol>
+        <symbol id="i-compare" viewBox="0 0 24 24"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="8 8 4 12 8 16"/><polyline points="16 8 20 12 16 16"/></symbol>
+      </g>
+    </defs>
+  </svg>
+
+  <div id="app" class="app">
+    <!-- ════════ 侧边栏 ════════ -->
+    <aside class="sidebar">
+      <div class="brand">
+        <svg class="brand-logo" viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="url(#brandGrad)"/>
+          <path d="M7 22 L13 12 L18 18 L25 8" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+          <circle cx="25" cy="8" r="2.4" fill="#fff"/>
+          <defs><linearGradient id="brandGrad" x1="0" y1="0" x2="32" y2="32"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs>
+        </svg>
+        <div class="brand-text">
+          <div class="brand-name">AxiomDesk</div>
+          <div class="brand-sub">公理级投研终端</div>
+        </div>
+        <button id="btn-theme" class="icon-btn theme-toggle" title="切换明暗主题" aria-label="切换主题">
+          <svg class="ico ico-moon"><use href="#i-moon"/></svg>
+          <svg class="ico ico-sun"><use href="#i-sun"/></svg>
+        </button>
       </div>
-    </div>
 
-    <form id="query" class="query" autocomplete="off">
-      <input id="ticker" class="q-ticker" placeholder="代码/名称，如 600519 · 宁德时代 · NVDA" />
-      <div class="q-row">
-        <select id="depth" class="q-depth" title="分析深度">
-          <option value="lite">快速 lite</option>
-          <option value="medium">标准 medium</option>
-          <option value="deep" selected>深度 deep</option>
-        </select>
-        <input id="boost" class="q-boost" type="number" min="0" max="4" value="0" title="杀猪盘语境加权 0-4" />
-      </div>
-      <div class="q-row q-opts">
-        <label class="q-ai"><input id="useai" type="checkbox" checked /> 调用 AI 研判</label>
-        <button id="run" type="submit">运行分析</button>
-      </div>
-    </form>
-
-    <nav id="nav" class="nav">
-      <button class="nav-btn active" data-tab="overview"><span class="ni">◉</span>概览</button>
-      <button class="nav-btn" data-tab="pipeline"><span class="ni">⚙</span>分析流水线</button>
-      <button class="nav-btn" data-tab="dims"><span class="ni">▦</span>维度深读</button>
-      <button class="nav-btn" data-tab="jury"><span class="ni">♛</span>66 评委团</button>
-      <button class="nav-btn" data-tab="valuation"><span class="ni">◭</span>估值三角</button>
-      <button class="nav-btn" data-tab="debate"><span class="ni">⇄</span>多空辩论</button>
-      <button class="nav-btn" data-tab="zones"><span class="ni">⛳</span>买入区间</button>
-      <button class="nav-btn" data-tab="risks"><span class="ni">⚠</span>风险与欺诈</button>
-      <button class="nav-btn" data-tab="trap"><span class="ni">🛡</span>杀猪盘检测</button>
-      <button class="nav-btn" data-tab="desk"><span class="ni">★</span>自选·监控<span id="desk-badge" class="nav-badge" hidden></span></button>
-      <div class="nav-div"></div>
-      <button class="nav-btn ladder-nav" data-tab="ladder"><span class="ni">⇡</span>连板梯队</button>
-      <button class="nav-btn sector-nav" data-tab="sector"><span class="ni">▦</span>板块轮动</button>
-      <button class="nav-btn backtest-nav" data-tab="backtest"><span class="ni">📈</span>信号回测</button>
-      <button class="nav-btn screener-nav" data-tab="screener"><span class="ni">🎯</span>选股</button>
-      <button class="nav-btn digest-nav" data-tab="digest"><span class="ni">🗞</span>盘后速览</button>
-      <button class="nav-btn diag-nav" data-tab="diagnosis"><span class="ni">🔍</span>个股诊断</button>
-      <button class="nav-btn sq-nav" data-tab="signal-quality"><span class="ni">📊</span>信号胜率</button>
-      <button class="nav-btn rr-nav" data-tab="research"><span class="ni">📝</span>研报</button>
-      <div class="nav-div"></div>
-      <button class="nav-btn cf-nav" data-tab="capital"><span class="ni">💱</span>资金流向</button>
-      <button class="nav-btn sent-nav" data-tab="sentiment"><span class="ni">🌡</span>市场情绪</button>
-      <button class="nav-btn risk-nav" data-tab="risk"><span class="ni">🛡</span>风险监控</button>
-      <button class="nav-btn cal-nav" data-tab="calendar"><span class="ni">📅</span>财经日历</button>
-      <button class="nav-btn config-nav" data-tab="config"><span class="ni">⚙</span>接口配置</button>
-    </nav>
-
-    <div class="side-foot">
-      <button id="btn-history" class="ghost-btn">⟳ 历史</button>
-      <button id="btn-compare" class="ghost-btn">⇲ 对比</button>
-      <div id="llm-badge" class="llm-badge" title="研判叙述来源">研判：—</div>
-    </div>
-  </aside>
-
-  <main id="main">
-    <section id="empty" class="empty">
-      <div class="empty-card">
-        <h1>把一只股票，拆给 66 位专家审一遍</h1>
-        <p>终端会跑完 <b>数据采集 → 机构级建模(DCF/Comps/LBO) → 20 维打分 → 66 位投资大佬陪审团 → AI 综合研判</b> 的完整流水线，并给出带冲突感的多空结论与人格化的评委点评。</p>
-        <div class="quick">
-          <span>热门：</span>
+      <!-- 个股查询 -->
+      <form id="query" class="query" autocomplete="off">
+        <div class="q-input">
+          <svg class="ico q-ico"><use href="#i-search"/></svg>
+          <input id="ticker" class="q-ticker" placeholder="代码 / 名称，如 600519 · 宁德时代 · NVDA" />
+        </div>
+        <div class="q-row">
+          <select id="depth" class="q-select" title="分析深度">
+            <option value="lite">快速 lite</option>
+            <option value="medium">标准 medium</option>
+            <option value="deep" selected>深度 deep</option>
+          </select>
+          <div class="q-ai" title="调用 AI 研判（可选）">
+            <input id="useai" type="checkbox" checked />
+            <label for="useai">AI 研判</label>
+          </div>
+          <button id="run" type="submit" class="btn btn-primary q-run">
+            <svg class="ico"><use href="#i-run"/></svg> 分析
+          </button>
+        </div>
+        <div class="q-chips">
           <button class="chip" data-t="600519">贵州茅台</button>
           <button class="chip" data-t="300750">宁德时代</button>
           <button class="chip" data-t="NVDA">英伟达</button>
-          <button class="chip" data-t="000001">平安银行</button>
           <button class="chip" data-t="00700">腾讯控股</button>
         </div>
-        <div class="disclaim">数据来源：内置真实个股近似基本面 + 确定性合成（已标注非真实行情）；研判可由 DeepSeek 驱动。仅供研究，非投资建议。</div>
-      </div>
-    </section>
+      </form>
 
-    <section id="loading" class="loading" hidden>
-      <div class="loading-title">正在执行分析流水线…</div>
-      <ol class="pipeline" id="pipeline-load"></ol>
-      <div class="loading-note" id="loading-note"></div>
-    </section>
+      <nav id="nav" class="nav" aria-label="主导航">
+        <div class="nav-group">
+          <div class="nav-label">个股研判</div>
+          <button class="nav-btn active" data-tab="overview"><svg class="ico"><use href="#i-overview"/></svg><span>概览</span></button>
+          <button class="nav-btn" data-tab="pipeline"><svg class="ico"><use href="#i-pipeline"/></svg><span>分析流水线</span></button>
+          <button class="nav-btn" data-tab="dims"><svg class="ico"><use href="#i-dims"/></svg><span>维度深读</span></button>
+          <button class="nav-btn" data-tab="jury"><svg class="ico"><use href="#i-jury"/></svg><span>66 评委团</span></button>
+          <button class="nav-btn" data-tab="valuation"><svg class="ico"><use href="#i-valuation"/></svg><span>估值三角</span></button>
+          <button class="nav-btn" data-tab="debate"><svg class="ico"><use href="#i-debate"/></svg><span>多空辩论</span></button>
+          <button class="nav-btn" data-tab="zones"><svg class="ico"><use href="#i-zones"/></svg><span>买入区间</span></button>
+          <button class="nav-btn" data-tab="risks"><svg class="ico"><use href="#i-risks"/></svg><span>风险与欺诈</span></button>
+          <button class="nav-btn" data-tab="trap"><svg class="ico"><use href="#i-trap"/></svg><span>杀猪盘检测</span></button>
+        </div>
 
-    <section id="report" class="report" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name" id="rh-name">—</div>
-          <div class="rh-sub" id="rh-sub">—</div>
+        <div class="nav-group">
+          <div class="nav-label">市场情绪</div>
+          <button class="nav-btn" data-tab="sentiment"><svg class="ico"><use href="#i-sentiment"/></svg><span>市场情绪</span></button>
+          <button class="nav-btn" data-tab="ladder"><svg class="ico"><use href="#i-ladder"/></svg><span>连板梯队</span></button>
+          <button class="nav-btn" data-tab="sector"><svg class="ico"><use href="#i-sector"/></svg><span>板块轮动</span></button>
+          <button class="nav-btn" data-tab="digest"><svg class="ico"><use href="#i-digest"/></svg><span>盘后速览</span></button>
         </div>
-        <div class="rh-right">
-          <span class="rh-price" id="rh-price">—</span>
-          <span id="rh-verdict" class="verdict watch">—</span>
-          <button id="btn-addwatch" class="ghost-btn sm" title="把当前标的加入自选">＋自选</button>
-        </div>
-      </div>
-      <div class="rh-dataq" id="rh-dataq" hidden></div>
 
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-overview"></div>
-        <div class="tab-panel" id="tab-pipeline" hidden></div>
-        <div class="tab-panel" id="tab-dims" hidden></div>
-        <div class="tab-panel" id="tab-jury" hidden></div>
-        <div class="tab-panel" id="tab-valuation" hidden></div>
-        <div class="tab-panel" id="tab-debate" hidden></div>
-        <div class="tab-panel" id="tab-zones" hidden></div>
-        <div class="tab-panel" id="tab-risks" hidden></div>
-        <div class="tab-panel" id="tab-trap" hidden></div>
-        <div class="tab-panel" id="tab-desk" hidden></div>
-        <div class="tab-panel" id="tab-config" hidden></div>
-      </div>
-    </section>
+        <div class="nav-group">
+          <div class="nav-label">选股 · 回测</div>
+          <button class="nav-btn" data-tab="screener"><svg class="ico"><use href="#i-screener"/></svg><span>选股引擎</span></button>
+          <button class="nav-btn" data-tab="backtest"><svg class="ico"><use href="#i-backtest"/></svg><span>信号回测</span></button>
+          <button class="nav-btn" data-tab="signal-quality"><svg class="ico"><use href="#i-signal"/></svg><span>信号胜率</span></button>
+        </div>
 
-    <!-- 市场级：连板梯队 / 涨停异动监控（融合 a-stock-data / tickflow-stock-panel） -->
-    <section id="market" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">连板梯队 · 涨停异动监控</div>
-          <div class="rh-sub" id="ladder-sub">全市场涨停 / 连板 / 炸板实时快照</div>
+        <div class="nav-group">
+          <div class="nav-label">资金 · 风控</div>
+          <button class="nav-btn" data-tab="capital"><svg class="ico"><use href="#i-capital"/></svg><span>资金流向</span></button>
+          <button class="nav-btn" data-tab="risk"><svg class="ico"><use href="#i-risk"/></svg><span>风险监控</span></button>
+          <button class="nav-btn" data-tab="calendar"><svg class="ico"><use href="#i-calendar"/></svg><span>财经日历</span></button>
         </div>
-        <div class="rh-right">
-          <span class="rh-dataq" id="ladder-source" hidden></span>
-          <button id="ladder-refresh" class="ghost-btn sm" title="重新拉取市场快照">⟳ 刷新</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-ladder"></div>
-      </div>
-    </section>
 
-    <!-- 市场级：板块轮动矩阵（融合 tickflow 轮动矩阵 + a-stock-data 板块资金流） -->
-    <section id="sector" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">板块轮动矩阵</div>
-          <div class="rh-sub" id="sector-sub">行业 / 概念板块的今日·5日·10日涨幅与主力净流入</div>
+        <div class="nav-group">
+          <div class="nav-label">智能增强</div>
+          <button class="nav-btn" data-tab="desk"><svg class="ico"><use href="#i-desk"/></svg><span>自选 · 监控</span><span id="desk-badge" class="nav-badge" hidden></span></button>
+          <button class="nav-btn" data-tab="diagnosis"><svg class="ico"><use href="#i-diagnosis"/></svg><span>个股诊断</span></button>
+          <button class="nav-btn" data-tab="research"><svg class="ico"><use href="#i-research"/></svg><span>综合研报</span></button>
         </div>
-        <div class="rh-right">
-          <span class="rh-dataq" id="sector-source" hidden></span>
-          <button id="sector-refresh" class="ghost-btn sm" title="重新拉取板块快照">⟳ 刷新</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-sector"></div>
-      </div>
-    </section>
 
-    <!-- 个股级：信号胜率回测 + 净值模拟（融合 tickflow 回测 + instock rate_stats） -->
-    <section id="backtest" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">信号胜率回测</div>
-          <div class="rh-sub" id="bt-sub">技术信号历史胜率 + 演示净值曲线</div>
+        <div class="nav-group">
+          <div class="nav-label">系统</div>
+          <button class="nav-btn" data-tab="config"><svg class="ico"><use href="#i-config"/></svg><span>接口配置</span></button>
         </div>
-        <div class="rh-right">
-          <input id="bt-ticker" class="ghost-input sm" placeholder="代码 如 600519" value="600519" />
-          <button id="bt-run" class="ghost-btn sm" title="运行回测">▶ 回测</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-backtest"></div>
-      </div>
-    </section>
+      </nav>
 
-    <!-- 市场级：选股引擎（融合 Sequoia-X RPS + InStock 因子 + stock-master 形态选股） -->
-    <section id="screener" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">选股引擎</div>
-          <div class="rh-sub" id="sc-sub">批量扫描股票池，综合评分（信号强度 + RPS 相对强度 + 动量 + 筹码）</div>
+      <div class="side-foot">
+        <div class="ds-status" id="ds-status" title="当前数据源">
+          <span class="dot"></span><span class="ds-text">数据源：—</span>
         </div>
-        <div class="rh-right">
-          <select id="sc-universe" class="ghost-input sm">
-            <option value="demo">演示池</option>
-            <option value="watchlist">自选股</option>
-          </select>
-          <select id="sc-sort" class="ghost-input sm">
-            <option value="score">按评分</option>
-            <option value="rps">按 RPS</option>
-            <option value="signals">按信号数</option>
-            <option value="momentum">按动量</option>
-          </select>
-          <button id="sc-scan" class="ghost-btn sm" title="运行选股扫描">▶ 扫描</button>
+        <div class="foot-actions">
+          <button id="btn-history" class="ghost-btn" title="分析历史"><svg class="ico"><use href="#i-history"/></svg></button>
+          <button id="btn-compare" class="ghost-btn" title="多标的对比"><svg class="ico"><use href="#i-compare"/></svg></button>
+          <span class="ver">v3.6.0</span>
         </div>
       </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-screener"></div>
-      </div>
-    </section>
+    </aside>
 
-    <!-- 市场级：盘后速览（融合 daily_stock_analysis 收盘复盘） -->
-    <section id="digest" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">盘后速览</div>
-          <div class="rh-sub" id="dg-sub">收盘后一页速览：情绪 · 主线 · 异动 · 风险</div>
+    <!-- ════════ 主内容 ════════ -->
+    <main id="main" class="main">
+      <header class="topbar">
+        <div class="crumb">
+          <span class="crumb-root">AxiomDesk</span>
+          <span class="crumb-sep">/</span>
+          <span id="crumb-cur" class="crumb-cur">概览</span>
         </div>
-        <div class="rh-right">
-          <span class="rh-dataq" id="dg-source" hidden></span>
-          <button id="dg-refresh" class="ghost-btn sm" title="重新生成盘后速览">⟳ 刷新</button>
+        <div class="topbar-right">
+          <span id="live-badge" class="live-badge" title="数据链路状态"><span class="ldot"></span>实时</span>
+          <button id="btn-theme-2" class="icon-btn" title="切换主题"><svg class="ico ico-moon"><use href="#i-moon"/></svg><svg class="ico ico-sun"><use href="#i-sun"/></svg></button>
         </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-digest"></div>
-      </div>
-    </section>
+      </header>
 
-    <!-- 融合贯通：个股全景诊断（六维综合研判卡） -->
-    <section id="diagnosis" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">个股全景诊断</div>
-          <div class="rh-sub" id="dx-sub">六维融合综合研判：技术 · 资金 · 情绪 · 估值 · 事件 · 风控</div>
-        </div>
-        <div class="rh-right">
-          <input id="dx-ticker" class="ghost-input sm" placeholder="代码 如 600519" value="600519" />
-          <button id="dx-run" class="ghost-btn sm" title="生成个股诊断">▶ 诊断</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-diagnosis"></div>
-      </div>
-    </section>
+      <div class="content">
+        <!-- 空态 -->
+        <section id="empty" class="empty">
+          <div class="empty-card">
+            <div class="empty-kicker">QUANT · TERMINAL</div>
+            <h1>把一只股票，拆给 66 位专家审一遍</h1>
+            <p>终端会跑完 <b>数据采集 → 机构级建模(DCF/Comps/LBO) → 20 维打分 → 66 位投资大佬陪审团 → AI 综合研判</b> 的完整流水线，并给出带冲突感的多空结论与人格化的评委点评。</p>
+            <div class="quick">
+              <span class="quick-label">热门标的：</span>
+              <button class="chip" data-t="600519">贵州茅台</button>
+              <button class="chip" data-t="300750">宁德时代</button>
+              <button class="chip" data-t="NVDA">英伟达</button>
+              <button class="chip" data-t="000001">平安银行</button>
+              <button class="chip" data-t="00700">腾讯控股</button>
+            </div>
+            <div class="disclaim">数据来源：内置真实个股近似基本面 + 确定性合成（已标注非真实行情）；研判可由 DeepSeek 驱动。仅供研究，非投资建议。</div>
+          </div>
+        </section>
 
-    <!-- 量化背书：信号历史胜率表（跨标的回测） -->
-    <section id="signal-quality" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">信号胜率表</div>
-          <div class="rh-sub" id="sq-sub">18 个形态信号的历史胜率与平均收益（跨标的回测）</div>
-        </div>
-        <div class="rh-right">
-          <button id="sq-refresh" class="ghost-btn sm" title="重新计算信号胜率">⟳ 计算</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-signal-quality"></div>
-      </div>
-    </section>
+        <!-- 加载态 -->
+        <section id="loading" class="loading" hidden>
+          <div class="loading-card">
+            <div class="loading-title">正在执行分析流水线…</div>
+            <ol class="pipeline" id="pipeline-load"></ol>
+            <div class="loading-note" id="loading-note"></div>
+          </div>
+        </section>
 
-    <!-- 融合贯通：综合研报生成器（个股深度研报 / 市场日报 + Markdown 导出） -->
-    <section id="research" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">综合研报</div>
-          <div class="rh-sub" id="rr-sub">把所有维度融合成一份专业研报：个股深度 / 市场日报 + 一键导出 Markdown</div>
-        </div>
-        <div class="rh-right">
-          <input id="rr-ticker" class="ghost-input sm" placeholder="代码 如 600519（留空=市场日报）" value="600519" />
-          <button id="rr-run" class="ghost-btn sm" title="生成研报">▶ 生成</button>
-          <button id="rr-copy" class="ghost-btn sm" title="复制 Markdown">⧉ 复制MD</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-research"></div>
-      </div>
-    </section>
+        <!-- 个股报告 -->
+        <section id="report" class="report" hidden>
+          <div class="report-head">
+            <div class="rh-left">
+              <div class="rh-name" id="rh-name">—</div>
+              <div class="rh-sub" id="rh-sub">—</div>
+            </div>
+            <div class="rh-right">
+              <span class="rh-price num" id="rh-price">—</span>
+              <span id="rh-verdict" class="verdict watch">—</span>
+              <button id="btn-addwatch" class="btn btn-ghost sm" title="把当前标的加入自选">＋自选</button>
+            </div>
+          </div>
+          <div class="tab-body">
+            <div class="tab-panel" id="tab-overview"></div>
+            <div class="tab-panel" id="tab-pipeline" hidden></div>
+            <div class="tab-panel" id="tab-dims" hidden></div>
+            <div class="tab-panel" id="tab-jury" hidden></div>
+            <div class="tab-panel" id="tab-valuation" hidden></div>
+            <div class="tab-panel" id="tab-debate" hidden></div>
+            <div class="tab-panel" id="tab-zones" hidden></div>
+            <div class="tab-panel" id="tab-risks" hidden></div>
+            <div class="tab-panel" id="tab-trap" hidden></div>
+            <div class="tab-panel" id="tab-config" hidden></div>
+          </div>
+        </section>
 
-    <!-- 资金面：个股五档资金流 / 板块资金榜 / 北向资金（融合 go-stock-dev + adata + a-stock-data） -->
-    <section id="capital" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">资金流向</div>
-          <div class="rh-sub" id="cf-sub">个股五档资金流 · 板块资金榜 · 北向资金</div>
-        </div>
-        <div class="rh-right">
-          <input id="cf-ticker" class="ghost-input sm" placeholder="代码 如 600519" value="600519" />
-          <button id="cf-run" class="ghost-btn sm" title="查询个股资金流">▶ 查询</button>
-          <button id="cf-refresh" class="ghost-btn sm" title="刷新板块榜与北向">⟳ 刷新</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-capital"></div>
-      </div>
-    </section>
+        <!-- 市场级：市场情绪 -->
+        <section id="sentiment" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">市场情绪仪表盘</div><div class="rh-sub" id="ms-sub">恐惧贪婪指数 · 涨跌停统计 · 量能热度</div></div>
+            <div class="rh-right"><button id="ms-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>刷新</button></div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-sentiment"></div></div>
+        </section>
 
-    <!-- 情绪面：恐惧贪婪指数 / 涨跌停统计 / 量能热度（融合 aiagents-stock） -->
-    <section id="sentiment" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">市场情绪</div>
-          <div class="rh-sub" id="ms-sub">恐惧贪婪指数 · 涨跌停统计 · 量能热度</div>
-        </div>
-        <div class="rh-right">
-          <button id="ms-refresh" class="ghost-btn sm" title="重新生成情绪快照">⟳ 刷新</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-sentiment"></div>
-      </div>
-    </section>
+        <!-- 市场级：连板梯队 -->
+        <section id="ladder" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">连板梯队 · 涨停异动监控</div><div class="rh-sub" id="ladder-sub">全市场涨停 / 连板 / 炸板实时快照</div></div>
+            <div class="rh-right"><button id="ladder-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>刷新</button></div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-ladder"></div></div>
+        </section>
 
-    <!-- 风控面：解禁减持三条封杀线 / 估值异常（融合 TradingAgents） -->
-    <section id="risk" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">风险监控</div>
-          <div class="rh-sub" id="rk-sub">解禁减持压力（三条封杀线）· 估值异常扫描</div>
-        </div>
-        <div class="rh-right">
-          <input id="rk-ticker" class="ghost-input sm" placeholder="代码 如 600519" value="" />
-          <button id="rk-run" class="ghost-btn sm" title="查询个股风险">▶ 个股</button>
-          <button id="rk-refresh" class="ghost-btn sm" title="市场级风险扫描">⟳ 市场扫描</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-risk"></div>
-      </div>
-    </section>
+        <!-- 市场级：板块轮动 -->
+        <section id="sector" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">板块轮动矩阵</div><div class="rh-sub" id="sector-sub">行业 / 概念板块的今日·5日·10日涨幅与主力净流入</div></div>
+            <div class="rh-right"><button id="sector-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>刷新</button></div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-sector"></div></div>
+        </section>
 
-    <!-- 事件面：财经日历（融合 stock-master 解禁/分红/定增爬虫） -->
-    <section id="calendar" class="report standalone" hidden>
-      <div class="report-head">
-        <div class="rh-left">
-          <div class="rh-name">财经日历</div>
-          <div class="rh-sub" id="cal-sub">解禁 · 定增 · 分红派息 · 财报披露时间线</div>
-        </div>
-        <div class="rh-right">
-          <select id="cal-days" class="ghost-input sm">
-            <option value="15">15 日</option>
-            <option value="30" selected>30 日</option>
-            <option value="60">60 日</option>
-          </select>
-          <input id="cal-ticker" class="ghost-input sm" placeholder="代码(可选)" value="" />
-          <button id="cal-refresh" class="ghost-btn sm" title="刷新财经日历">⟳ 刷新</button>
-        </div>
-      </div>
-      <div class="tab-body">
-        <div class="tab-panel" id="tab-calendar"></div>
-      </div>
-    </section>
+        <!-- 市场级：盘后速览 -->
+        <section id="digest" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">盘后速览</div><div class="rh-sub" id="dg-sub">收盘后一页速览：情绪 · 主线 · 异动 · 风险</div></div>
+            <div class="rh-right"><button id="dg-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>刷新</button></div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-digest"></div></div>
+        </section>
 
-    <footer class="app-foot">
-      <span class="af-brand">AxiomDesk <b>v3.6.0</b> · 公理级投研终端</span>
-      <span class="af-note">数据可能为实时行情 / 估算推导 / 离线合成；研判可由 AI 驱动。本终端仅用于研究与学习，所有结论不构成任何投资建议。</span>
-    </footer>
-  </main>
+        <!-- 选股引擎 -->
+        <section id="screener" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">选股引擎</div><div class="rh-sub" id="sc-sub">批量扫描股票池，综合评分（信号强度 + RPS 相对强度 + 动量 + 筹码）</div></div>
+            <div class="rh-right">
+              <select id="sc-universe" class="q-select sm"><option value="demo">演示池</option><option value="watchlist">自选股</option></select>
+              <select id="sc-sort" class="q-select sm"><option value="score">按评分</option><option value="rps">按 RPS</option><option value="signals">按信号数</option><option value="momentum">按动量</option></select>
+              <button id="sc-scan" class="btn btn-primary sm"><svg class="ico"><use href="#i-run"/></svg>扫描</button>
+            </div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-screener"></div></div>
+        </section>
+
+        <!-- 信号回测 -->
+        <section id="backtest" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">信号胜率回测</div><div class="rh-sub" id="bt-sub">技术信号历史胜率 + 演示净值曲线</div></div>
+            <div class="rh-right">
+              <input id="bt-ticker" class="q-input sm" placeholder="代码 如 600519" value="600519" />
+              <button id="bt-run" class="btn btn-primary sm"><svg class="ico"><use href="#i-run"/></svg>回测</button>
+            </div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-backtest"></div></div>
+        </section>
+
+        <!-- 信号胜率 -->
+        <section id="signal-quality" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">信号胜率表</div><div class="rh-sub" id="sq-sub">18 个形态信号的历史胜率与平均收益（跨标的回测）</div></div>
+            <div class="rh-right"><button id="sq-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>计算</button></div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-signal-quality"></div></div>
+        </section>
+
+        <!-- 资金流向 -->
+        <section id="capital" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">资金流向</div><div class="rh-sub" id="cf-sub">个股五档资金流 · 板块资金榜 · 北向资金</div></div>
+            <div class="rh-right">
+              <input id="cf-ticker" class="q-input sm" placeholder="代码 如 600519" value="600519" />
+              <button id="cf-run" class="btn btn-primary sm"><svg class="ico"><use href="#i-run"/></svg>查询</button>
+              <button id="cf-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>刷新榜</button>
+            </div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-capital"></div></div>
+        </section>
+
+        <!-- 风险监控 -->
+        <section id="risk" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">风险监控</div><div class="rh-sub" id="rk-sub">解禁减持压力（三条封杀线）· 估值异常扫描</div></div>
+            <div class="rh-right">
+              <input id="rk-ticker" class="q-input sm" placeholder="代码(可选)" value="" />
+              <button id="rk-run" class="btn btn-primary sm"><svg class="ico"><use href="#i-run"/></svg>个股</button>
+              <button id="rk-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>市场扫描</button>
+            </div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-risk"></div></div>
+        </section>
+
+        <!-- 财经日历 -->
+        <section id="calendar" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">财经日历</div><div class="rh-sub" id="cal-sub">解禁 · 定增 · 分红派息 · 财报披露时间线</div></div>
+            <div class="rh-right">
+              <select id="cal-days" class="q-select sm"><option value="15">15 日</option><option value="30" selected>30 日</option><option value="60">60 日</option></select>
+              <input id="cal-ticker" class="q-input sm" placeholder="代码(可选)" value="" />
+              <button id="cal-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>刷新</button>
+            </div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-calendar"></div></div>
+        </section>
+
+        <!-- 自选·监控 -->
+        <section id="desk" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">自选 · 监控中心</div><div class="rh-sub" id="desk-sub">自选股实时盈亏 · 盘中预警事件流</div></div>
+            <div class="rh-right"><button id="desk-refresh" class="btn btn-ghost sm"><svg class="ico"><use href="#i-refresh"/></svg>检查预警</button></div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-desk"></div></div>
+        </section>
+
+        <!-- 个股诊断 -->
+        <section id="diagnosis" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">个股全景诊断</div><div class="rh-sub" id="dx-sub">六维融合综合研判：技术 · 资金 · 情绪 · 估值 · 事件 · 风控</div></div>
+            <div class="rh-right">
+              <input id="dx-ticker" class="q-input sm" placeholder="代码 如 600519" value="600519" />
+              <button id="dx-run" class="btn btn-primary sm"><svg class="ico"><use href="#i-run"/></svg>诊断</button>
+            </div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-diagnosis"></div></div>
+        </section>
+
+        <!-- 综合研报 -->
+        <section id="research" class="report standalone" hidden>
+          <div class="report-head">
+            <div class="rh-left"><div class="rh-name">综合研报</div><div class="rh-sub" id="rr-sub">个股深度研报 / 市场日报 + 一键导出 Markdown</div></div>
+            <div class="rh-right">
+              <input id="rr-ticker" class="q-input sm" placeholder="代码（留空=市场日报）" value="600519" />
+              <button id="rr-run" class="btn btn-primary sm"><svg class="ico"><use href="#i-run"/></svg>生成</button>
+              <button id="rr-copy" class="btn btn-ghost sm"><svg class="ico"><use href="#i-copy"/></svg>复制MD</button>
+            </div>
+          </div>
+          <div class="tab-body"><div class="tab-panel" id="tab-research"></div></div>
+        </section>
+
+        <footer class="app-foot">
+          <span class="af-brand">AxiomDesk <b>v3.6.0</b> · 公理级投研终端</span>
+          <span class="af-note">数据可能为实时行情 / 估算推导 / 离线合成；研判可由 AI 驱动。本终端仅用于研究与学习，所有结论不构成任何投资建议。</span>
+        </footer>
+      </div>
+    </main>
+  </div>
 
   <!-- 历史抽屉 -->
   <div id="history-drawer" class="drawer" hidden>
@@ -360,9 +392,9 @@
     <div class="modal-head"><span>多标的横向对比</span><button id="compare-close" class="x">✕</button></div>
     <div class="modal-body">
       <div class="cmp-input">
-        <input id="cmp-tickers" placeholder="逗号分隔，最多 5 只：600519,300750,000001" />
-        <select id="cmp-depth"><option value="lite">lite</option><option value="medium" selected>medium</option><option value="deep">deep</option></select>
-        <button id="cmp-run">对比</button>
+        <input id="cmp-tickers" class="q-input" placeholder="逗号分隔，最多 5 只：600519,300750,000001" />
+        <select id="cmp-depth" class="q-select"><option value="lite">lite</option><option value="medium" selected>medium</option><option value="deep">deep</option></select>
+        <button id="cmp-run" class="btn btn-primary">对比</button>
       </div>
       <div id="cmp-result"></div>
     </div>
@@ -370,6 +402,7 @@
 
   <div id="toast" class="toast" hidden></div>
 
+  <script src="vendor/echarts.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
