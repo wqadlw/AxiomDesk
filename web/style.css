@@ -4,6 +4,11 @@
    本次升级：提升信息密度、收窄留白、 tighter 网格、更接近 tickflow 终端风格
    ════════════════════════════════════════════════════════════════ */
 
+/* 关键：.hidden 属性必须真正隐藏元素。否则 .drawer/.modal/.drawer-mask 等
+   带 display 的类会覆盖浏览器默认的 [hidden]{display:none}，导致隐藏的浮层
+   仍铺在内容区上方拦截所有点击（表现为“页面点击没反应”）。 */
+[hidden] { display: none !important; }
+
 :root {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
