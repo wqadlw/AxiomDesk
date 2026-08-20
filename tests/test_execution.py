@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from server.api.routes import API_VERSION
 from server.services import memory as MEM
 from server.services import monitor as MN
 from server.services import plan as PL
@@ -220,4 +221,4 @@ def test_api_memory_endpoints(client):
 
 
 def test_api_version_is_340(client):
-    assert client.get("/api/health").json()["version"] == "3.6.0"
+    assert client.get("/api/health").json()["version"] == API_VERSION

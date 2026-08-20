@@ -2,6 +2,7 @@
 
 from fastapi.testclient import TestClient
 
+from server.api.routes import API_VERSION
 from server.app import create_app
 
 client = TestClient(create_app())
@@ -40,6 +41,6 @@ def test_research_report_api_dual_prefix():
         r = client.get(f"{prefix}/research-report?ticker=600519")
         assert r.status_code == 200
         body = r.json()
-        assert body["version"] == "3.6.0"
+        assert body["version"] == API_VERSION
         assert body["available"] is True
         assert len(body["markdown"]) > 0

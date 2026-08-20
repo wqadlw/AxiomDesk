@@ -96,6 +96,49 @@
   }
   function scoreChip(s) { return `<span class="score-chip" style="${scoreBg(s)}">${fmt(s, 1)}</span>`; }
 
+  /* 策略芯片（选股页） */
+  function strategyChip(name, count, active, onClick = "") {
+    return `<button class="strategy-chip ${active ? "active" : ""}" data-sc="${esc(name)}" ${onClick ? `onclick="${onClick}"` : ""}>
+      <span>${esc(name)}</span><span class="count">${count}</span></button>`;
+  }
+
+  /* 迷你 K 线 / 折线 sparkline（SVG，无 ECharts 开销） */
+  function sparklineSvg(values, color) {
+    if (!values || values.length < 2) return `<span class="sub">—</span>`;
+    const w = 70, h = 24, min = Math.min(...values), max = Math.max(...values), range = max - min || 1;
+    const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - ((v - min) / range) * h}`).join(" ");
+    return `<svg class="sparkline" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+  function candleSparkSvg(candles, bull, bear) {
+    if (!candles || candles.length < 2) return `<span class="sub">—</span>`;
+    const w = 80, h = 30, n = candles.length;
+    const highs = candles.map((c) => c.high), lows = candles.map((c) => c.low);
+    const min = Math.min(...lows), max = Math.max(...highs), range = max - min || 1;
+    const x = (i) => (i / (n - 1)) * w;
+    const y = (v) => h - ((v - min) / range) * h;
+    let body = "";
+    candles.forEach((c, i) => {
+      const up = c.close >= c.open;
+      const col = up ? bull : bear;
+      body += `<line x1="${x(i)}" y1="${y(c.low)}" x2="${x(i)}" y2="${y(c.high)}" stroke="${col}" stroke-width="1"/>`;
+      const topY = Math.min(y(c.open), y(c.close)); const hBody = Math.max(1, Math.abs(y(c.close) - y(c.open)));
+      body += `<rect x="${x(i) - 1.5}" y="${topY}" width="3" height="${hBody}" fill="${col}"/>`;
+    });
+    return `<svg class="mini-k" viewBox="0 0 ${w} ${h}">${body}</svg>`;
+  }
+
+  /* 从 K 线算简单支撑/压力位 */
+  function computeKeyLevels(k) {
+    if (!k || k.length < 20) return null;
+    const last = k[k.length - 1];
+    const closes = k.map((c) => c.close);
+    const pivot = (Math.max(...closes.slice(-20)) + Math.min(...closes.slice(-20))) / 2;
+    const atr = (() => { let s = 0; for (let i = k.length - 14; i < k.length; i++) s += Math.max(k[i].high - k[i].low, Math.abs(k[i].high - k[i - 1].close), Math.abs(k[i].low - k[i - 1].close)); return s / 14; })();
+    const r1 = last.close + atr, r2 = last.close + atr * 2;
+    const s1 = last.close - atr, s2 = last.close - atr * 2;
+    return { close: last.close, r1, r2, s1, s2, pivot, atr };
+  }
+
   /* ───────── 通用 mini-markdown（用于研报）───────── */
   function md(text) {
     if (!text) return "";
@@ -279,42 +322,56 @@
     if (current) renderReportTab(activeView);
   }
 
-  /* ════════ 个股：概览 ════════ */
+  /* ════════ 个股：概览（tickflow 式：全宽 K 线 + 关键价位 + 信号）════════ */
   function renderOverview(r) {
     const m = r.meta || {}, p = $("#tab-overview");
-    const chg = (m.price && r.valuation && r.valuation.fair_price) ? (r.valuation.fair_price - m.price) / m.price : null;
-    const stats = `<div class="grid c4">${[
-      stat("现价", isNum(m.price) ? fmt(m.price, 2) : "—", m.unit || ""),
-      stat("综合评分", fmt(r.overall_score, 1) + " /10", r.verdict || ""),
-      stat("总市值", money(m.mcap, m.mcap_unit || "亿"), "PE " + fmt(m.pe)),
-      stat("ROE", fmt(m.roe, 1) + "%", "营收增速 " + pct(m.revenue_growth)),
-    ].join("")}</div>`;
-
-    const klineCard = `<div class="card hov">
-      ${sectionTitle("个股日 K 线", "前复权 · MA5/10/20", "i-overview")}
-      <div id="ov-kline" class="chart lg"></div>
-    </div>`;
-
     const sig = (r.signals || []).filter((s) => s.fired);
     const bullS = sig.filter((s) => s.side === "bullish").map((s) => `<span class="tag bull">${esc(s.name)}</span>`).join("");
     const bearS = sig.filter((s) => s.side === "bearish").map((s) => `<span class="tag bear">${esc(s.name)}</span>`).join("");
     const concl = r.ai && r.ai.core_conclusion ? md(r.ai.core_conclusion) : `<div class="muted">（未启用 AI 研判）</div>`;
 
-    const side = `<div class="grid" style="gap:14px">
-      <div class="card hov">${sectionTitle("核心结论", "", "i-debate")}<div class="prose">${concl}</div></div>
-      <div class="card hov">
-        ${sectionTitle("信号触发", `${sig.length} 个形态信号`, "i-signal")}
-        <div style="display:flex;flex-wrap:wrap;gap:6px">${bullS || '<span class="muted">无多头信号</span>'}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${bearS || ""}</div>
+    p.innerHTML = `
+      <div class="grid c4" style="margin-bottom:var(--gap)">
+        ${stat("现价", isNum(m.price) ? fmt(m.price, 2) : "—", m.unit || "")}
+        ${stat("综合评分", fmt(r.overall_score, 1) + " /10", r.verdict || "")}
+        ${stat("总市值", money(m.mcap, m.mcap_unit || "亿"), "PE " + fmt(m.pe))}
+        ${stat("ROE", fmt(m.roe, 1) + "%", "营收增速 " + pct(m.revenue_growth))}
       </div>
-    </div>`;
-
-    p.innerHTML = stats + klineCard + `<div class="grid c2" style="margin-top:14px">${side}</div>`;
-    drawKline("#ov-kline", m.ticker || currentTicker);
+      <div class="kline-wrap">
+        <div class="card hov kline-main">
+          <div class="card-head" style="margin-bottom:4px">
+            <div class="card-title"><span class="st-bar"></span>个股日 K 线</div>
+            <span class="card-sub">前复权 · MA5/10/20 · 成交量 · 缩放</span>
+          </div>
+          <div class="chart-legend" id="ov-legend"></div>
+          <div id="ov-kline" class="chart xl"></div>
+        </div>
+        <div class="kline-side">
+          <div class="card hov">
+            <div class="card-title"><span class="st-bar"></span>关键价位</div>
+            <div class="levels-grid" id="ov-levels">${spinnerLevels()}</div>
+          </div>
+          <div class="card hov">
+            <div class="card-title"><span class="st-bar"></span>信号触发</div>
+            <div class="card-sub" style="margin-bottom:8px">${sig.length} 个形态信号</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${bullS || '<span class="muted">无多头</span>'}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px">${bearS || ""}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card hov" style="margin-top:var(--gap)">
+        <div class="card-title"><span class="st-bar"></span>核心结论</div>
+        <div class="prose">${concl}</div>
+      </div>`;
+    drawKline("#ov-kline", "#ov-legend", "#ov-levels", m.ticker || currentTicker);
     refreshDsStatus();
   }
 
-  function drawKline(sel, ticker) {
+  function spinnerLevels() {
+    return ["R2", "R1", "枢轴", "S1", "S2"].map((l) => `<div class="level-row"><span class="label">${l}</span><span class="off">加载中…</span></div>`).join("");
+  }
+
+  function drawKline(sel, legendSel, levelsSel, ticker) {
     const box = $(sel); if (!box) return;
     get("/kline", { ticker, days: 120 }).then((d) => {
       if (!d.available || !d.kline.length) { box.innerHTML = `<div class="empty-mini">无 K 线数据</div>`; return; }
@@ -323,11 +380,37 @@
       const ohlc = k.map((x) => [x.open, x.close, x.low, x.high]);
       const vol = k.map((x, i) => [i, x.volume, x.close >= x.open ? 1 : 0]);
       const ma5 = d.ma.ma5, ma10 = d.ma.ma10, ma20 = d.ma.ma20;
+      const levels = computeKeyLevels(k);
+      const C = chartPalette();
+
+      // 关键价位面板
+      if (levels && $(levelsSel)) {
+        const offPct = (v) => pct((v - levels.close) / levels.close);
+        $(levelsSel).innerHTML = [
+          ["R2 强压力", levels.r2, "up"],
+          ["R1 压力", levels.r1, "up"],
+          ["枢轴 P", levels.pivot, levels.pivot > levels.close ? "up" : "down"],
+          ["S1 支撑", levels.s1, "down"],
+          ["S2 强支撑", levels.s2, "down"],
+        ].map(([lab, val, dir]) => `<div class="level-row"><span class="label">${lab}</span><div><span class="value num ${dir}">${fmt(val, 2)}</span><span class="off">${offPct(val)}</span></div></div>`).join("");
+      }
+
+      // 图例
+      if ($(legendSel)) {
+        $(legendSel).innerHTML = [
+          ["K 线", C.bull], ["MA5", C.amber], ["MA10", C.accent2], ["MA20", C.accent],
+        ].map(([n, c]) => `<span><span class="dot" style="background:${c}"></span>${n}</span>`).join("");
+      }
+
       mountChart(box, (C) => ({
         animation: false,
-        grid: [{ left: 52, right: 16, top: 16, height: "62%" }, { left: 52, right: 16, top: "74%", height: "18%" }],
+        grid: [{ left: 52, right: 24, top: 10, height: "66%" }, { left: 52, right: 24, top: "78%", height: "16%" }],
         axisPointer: { link: [{ xAxisIndex: "all" }], label: { backgroundColor: C.sub } },
         tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: C.surface, borderColor: C.axis, textStyle: { color: C.text } },
+        dataZoom: [
+          { type: "inside", xAxisIndex: [0, 1], start: 50, end: 100 },
+          { type: "slider", xAxisIndex: [0, 1], start: 50, end: 100, height: 14, bottom: 4, borderColor: C.axis, fillerColor: "rgba(124,92,255,.15)", handleStyle: { color: C.accent }, textStyle: { color: C.sub } },
+        ],
         xAxis: [
           { type: "category", data: cat, gridIndex: 0, axisLine: { lineStyle: { color: C.axis } }, axisLabel: { color: C.sub, fontSize: 10 }, axisTick: { show: false } },
           { type: "category", data: cat, gridIndex: 1, axisLine: { lineStyle: { color: C.axis } }, axisLabel: { show: false }, axisTick: { show: false } },
@@ -517,8 +600,18 @@
       const gauge = `<div class="card hov"><div class="card-head"><div class="card-title"><span class="st-bar"></span>市场情绪</div><span class="card-sub">${esc(d.as_of || "")}</span></div><div id="ms-gauge" class="chart" style="height:240px"></div></div>`;
       const ad = `<div class="card hov"><div class="card-head"><div class="card-title"><span class="st-bar"></span>涨跌分布</div></div><div id="ms-ad" class="chart" style="height:240px"></div></div>`;
       const sig = (d.signals || []).map((s) => `<div class="list-row"><span class="badge ${s.level === "bull" ? "bull" : s.level === "bear" ? "bear" : s.level === "warn" ? "warn" : "neu"}">${esc(s.level)}</span><div class="sub" style="margin:0">${esc(s.text)}</div></div>`).join("") || `<div class="empty-mini">暂无信号</div>`;
-      const sigCard = `<div class="card hov"><div class="card-head"><div class="card-title"><span class="st-bar"></span>情绪信号</div></div><div class="list">${sig}</div></div>`;
-      p.innerHTML = stats + `<div class="grid c2" style="margin-top:14px">${gauge}${ad}</div><div style="margin-top:14px">${sigCard}</div>`;
+      const breadth = (d.advance || 0) + (d.decline || 0) + (d.flat || 0);
+      const breadthPct = breadth ? ((d.advance || 0) / breadth * 100) : 0;
+      p.innerHTML = stats + `
+        <div class="grid c3" style="margin-top:var(--gap)">
+          ${gauge}
+          ${ad}
+          <div class="card hov"><div class="card-head"><div class="card-title"><span class="st-bar"></span>情绪信号</div></div><div class="list" style="max-height:240px;overflow:auto">${sig}</div></div>
+        </div>
+        <div class="card hov" style="margin-top:var(--gap)">
+          <div class="card-head"><div class="card-title"><span class="st-bar"></span>市场宽度</div><span class="card-sub">上涨占比 ${fmt(breadthPct, 1)}%</span></div>
+          <div class="mini-bar" style="height:8px"><i style="background:hsl(var(--bull));width:${breadthPct}%"></i></div>
+        </div>`;
       const C = chartPalette();
       mountChart($("#ms-gauge"), (c) => ({
         series: [{ type: "gauge", min: 0, max: 100, splitNumber: 5, radius: "92%", center: ["50%", "60%"],
@@ -542,26 +635,45 @@
     } catch (e) { p.innerHTML = `<div class="empty-mini">情绪数据加载失败：${esc(e.message)}</div>`; }
   }
 
-  /* ════════ 市场：连板梯队 ════════ */
+  /* ════════ 市场：连板梯队（tickflow 式：分层卡片墙 + 概念标签）════════ */
   async function renderLadder() {
     const p = $("#tab-ladder");
-    p.innerHTML = `<div class="grid c4">${[1,2,3,4].map(() => `<div class="card skeleton" style="height:110px"></div>`).join("")}</div>`;
+    p.innerHTML = `<div class="grid c4">${[1,2,3,4].map(() => `<div class="card skeleton" style="height:90px"></div>`).join("")}</div>`;
     try {
       const d = await get("/limit-ladder");
-      const stats = `<div class="grid c4">
+      const stats = `<div class="grid c4" style="margin-bottom:var(--gap)">
         ${stat("涨停总数", d.total_limit ?? "—", `最高 ${d.max_boards ?? 0} 板`)}
         ${stat("炸板率", pct(d.break_rate, 1), d.break_rate > 0.25 ? "偏高" : "正常")}
         ${stat("连板梯队", (d.ladder || []).length, "个层级")}
         ${stat("情绪", (d.emotion && d.emotion.stage) || "—", (d.emotion && d.emotion.side) || "")}
       </div>`;
+
       const tiers = (d.ladder || []).map((t) => {
-        const stocks = (t.stocks || []).map((s) => `<span class="tag">${esc(s.name)}<span class="sub"> ${esc(s.industry || "")}</span></span>`).join("");
-        return `<div class="card hov"><div class="card-head"><div class="card-title"><span class="st-bar"></span>${t.board} 连板</div><span class="badge bull">${t.count} 只</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">${stocks || '<span class="muted">—</span>'}</div></div>`;
+        const cards = (t.stocks || []).map((s) => {
+          const tags = (s.concepts || []).slice(0, 3).map((c) => `<span class="tag">${esc(c)}</span>`).join("");
+          return `<div class="stock-card">
+            <div class="name">${esc(s.name)}</div>
+            <div class="code">${esc(s.ticker)}${s.industry ? " · " + esc(s.industry) : ""}</div>
+            <div class="meta">
+              <span class="${s.change_pct >= 0 ? "up" : "down"}">${pct(s.change_pct)}</span>
+              ${s.mcap_yi ? `<span class="sub">市值 ${fmt(s.mcap_yi)}亿</span>` : ""}
+            </div>
+            <div class="tags">${tags}</div>
+          </div>`;
+        }).join("");
+        return `<div class="tier">
+          <div class="tier-head">
+            <span class="tier-title">${t.board} 连板</span>
+            <span class="tier-count">${t.count} 只</span>
+          </div>
+          <div class="tier-row">${cards || '<span class="muted">—</span>'}</div>
+        </div>`;
       }).join("");
+
       const hot = (d.hot_sectors || []).map((s) => `<tr><td>${esc(s.name)}</td><td class="num">${s.limit_count}</td><td class="num">${fmt(s.share * 100, 1)}%</td></tr>`).join("");
       const anom = (d.anomalies || []).map((a) => `<div class="list-row"><span class="badge ${a.level === "good" ? "ok" : a.level === "warn" ? "warn" : "neu"}">${esc(a.type)}</span><div class="sub" style="margin:0">${esc(a.msg)}</div></div>`).join("");
-      p.innerHTML = stats + `<div class="grid auto" style="margin-top:14px">${tiers}</div>
-        <div class="grid c2" style="margin-top:14px">
+      p.innerHTML = stats + tiers + `
+        <div class="grid c2" style="margin-top:var(--gap)">
           <div class="card hov">${sectionTitle("热点板块主线", "", "i-sector")}${table(`<thead><tr>${th("板块")}${th("涨停数", { num: true })}${th("占比", { num: true })}</tr></thead>`, hot)}</div>
           <div class="card hov"><div class="card-head"><div class="card-title"><span class="st-bar"></span>异动信号</div></div><div class="list">${anom || '<div class="empty-mini">无</div>'}</div></div>
         </div>`;
@@ -596,25 +708,55 @@
     } catch (e) { p.innerHTML = `<div class="empty-mini">板块数据加载失败：${esc(e.message)}</div>`; }
   }
 
-  /* ════════ 选股引擎 ════════ */
+  /* ════════ 选股引擎（tickflow 式：策略芯片 + 紧凑表 + 信号标签）════════ */
   async function renderScreener() {
     const p = $("#tab-screener");
     const uni = $("#sc-universe").value, sort = $("#sc-sort").value;
     p.innerHTML = `<div class="card skeleton" style="height:300px"></div>`;
     try {
       const d = await get("/screener", { universe: uni, sort, limit: 30 });
+      const stocks = d.stocks || [];
+      const activeFilter = p.dataset.filter || "";
+
+      // 策略芯片：统计所有出现过的多头信号
+      const signalCounts = {};
+      stocks.forEach((s) => (s.bull_signals || []).forEach((sig) => { signalCounts[sig] = (signalCounts[sig] || 0) + 1; }));
+      const chips = Object.entries(signalCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([name, cnt]) => strategyChip(name, cnt, name === activeFilter, "filterScreener(this)"))
+        .join("");
+      const filtered = activeFilter ? stocks.filter((s) => (s.bull_signals || []).includes(activeFilter)) : stocks;
+
       const screenerRow = (s, i) => {
         const tags = (s.bull_signals || []).slice(0, 4).map((t) => `<span class="tag bull">${esc(t)}</span>`).join("");
+        const momColor = s.momentum > 0 ? "#f0495e" : s.momentum < 0 ? "#21c08a" : "#7b879c";
         return `<tr><td class="rank">${i + 1}</td><td><div class="name-cell">${esc(s.name)}</div><div class="sub">${esc(s.ticker)}</div></td><td class="sub">${esc(s.industry || "")}</td>
           <td class="num">${isNum(s.price) ? fmt(s.price, 2) : "—"}</td>
-          <td class="num"><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end"><span class="score-chip" style="${scoreBg(s.score / 10)}">${fmt(s.score, 1)}</span><div class="mini-bar" style="width:60px"><i style="${scoreBg(s.score / 10)};width:${s.score}%"></i></div></div></td>
-          <td class="num">${fmt(s.rps, 1)}</td><td class="num">${fmt(s.momentum, 1)}</td><td class="num">${s.signal_count}</td>
-          <td style="display:flex;flex-wrap:wrap;gap:4px">${tags}</td></tr>`;
+          <td class="num"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><span class="score-chip" style="${scoreBg(s.score / 10)}">${fmt(s.score, 1)}</span></div></td>
+          <td class="num">${fmt(s.rps, 1)}</td>
+          <td class="num">${fmt(s.momentum, 1)}</td>
+          <td class="num">${sparklineSvg([Math.max(0, s.rps), Math.max(0, s.momentum + 50), Math.max(0, s.score / 2), Math.max(0, s.signal_count * 10)], momColor)}</td>
+          <td class="num">${s.signal_count}</td>
+          <td style="display:flex;flex-wrap:wrap;gap:3px">${tags}</td></tr>`;
       };
-      const rows = (d.stocks || []).map(screenerRow).join("");
-      p.innerHTML = `<div class="card">${sectionTitle("选股结果", `扫描 ${d.scanned ?? 0} · 命中 ${d.matched ?? 0} · 池=${esc(uni)}`, "i-screener")}
-        ${table(`<thead><tr>${th("#")}${th("名称")}${th("行业")}${th("现价", { num: true })}${th("综合评分", { num: true, sortable: true, key: "score" })}${th("RPS", { num: true, sortable: true, key: "rps" })}${th("动量", { num: true, sortable: true, key: "momentum" })}${th("信号数", { num: true, sortable: true, key: "signal_count" })}${th("多头信号")}</tr></thead>`, rows)}</div>`;
-      makeSortable($("#tab-screener table"), d.stocks || [], screenerRow);
+      const rows = filtered.map(screenerRow).join("");
+      p.innerHTML = `
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="st-bar"></span>选股结果</div>
+            <span class="card-sub">扫描 ${d.scanned ?? 0} · 命中 ${filtered.length}/${d.matched ?? 0} · 池=${esc(uni)}</span>
+          </div>
+          <div class="chip-set" style="margin-bottom:10px">${chips}</div>
+          ${table(`<thead><tr>${th("#")}${th("名称")}${th("行业")}${th("现价", { num: true })}${th("评分", { num: true, sortable: true, key: "score" })}${th("RPS", { num: true, sortable: true, key: "rps" })}${th("动量", { num: true, sortable: true, key: "momentum" })}${th("趋势", { num: true })}${th("信号数", { num: true, sortable: true, key: "signal_count" })}${th("多头信号")}</tr></thead>`, rows)}
+        </div>`;
+      window.filterScreener = (btn) => {
+        const name = btn.dataset.sc;
+        p.dataset.filter = p.dataset.filter === name ? "" : name;
+        renderScreener();
+      };
+      makeSortable($("#tab-screener table"), filtered, screenerRow);
+      window._screenerStocks = stocks; // 保留原始数据用于排序/过滤
     } catch (e) { p.innerHTML = `<div class="empty-mini">选股失败：${esc(e.message)}</div>`; }
   }
 

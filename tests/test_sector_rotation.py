@@ -2,6 +2,8 @@
 
 import pytest
 
+from server.api.routes import API_VERSION
+
 pytestmark = pytest.mark.usefixtures("client")
 
 
@@ -31,7 +33,7 @@ def test_sector_rotation_endpoint(client, monkeypatch):
     r = client.get("/api/sector-rotation")
     assert r.status_code == 200
     body = r.json()
-    assert body["version"] == "3.6.0"
+    assert body["version"] == API_VERSION
     assert body["source"] == "demo"
     assert len(body["industry"]) > 0
 

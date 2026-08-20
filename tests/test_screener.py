@@ -2,11 +2,13 @@
 
 import pytest
 
+from server.api.routes import API_VERSION
+
 
 def test_screener_demo_both_prefixes(client):
     for prefix in ("/api", "/api/v1"):
         d = client.get(f"{prefix}/screener?universe=demo&sort=score&limit=30").json()
-        assert d["version"] == "3.6.0"
+        assert d["version"] == API_VERSION
         assert d["universe"] == "demo"
         assert d["scanned"] >= 1
         rows = d["stocks"]
