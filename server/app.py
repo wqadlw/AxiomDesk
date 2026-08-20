@@ -33,6 +33,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 
@@ -100,6 +101,16 @@ def create_app() -> FastAPI:
 
     # 静态资源（web 前端）；html=True 使 "/" 返回 index.html
     if WEB_DIR.exists():
+        from .api.routes import API_VERSION as _API_VER
+        _index_path = WEB_DIR / "index.html"
+
+        @app.get("/", response_class=HTMLResponse)
+        async def _index() -> HTMLResponse:
+            """入口 HTML：注入版本号实现静态资源缓存破坏（cache-busting），并返回 no-cache。"""
+            html = _index_path.read_text(encoding="utf-8")
+            html = html.replace("__APP_VER__", _API_VER)
+            return HTMLResponse(content=html, headers={"Cache-Control": "no-cache"})
+
         app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
 
     return app

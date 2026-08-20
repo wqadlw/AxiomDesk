@@ -3,6 +3,11 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)（当前 API 版本见 `server/api/routes.py:API_VERSION`）。
 
+## [3.8.1] — 2026-08-20
+
+### 静态资源缓存破坏（cache-busting）——根治"改了代码页面没更新"
+- 入口 HTML 改为由服务端动态注入 `API_VERSION` 至 `style.css / app.js / vendor/echarts.min.js` 的 `?v=<ver>` 查询串，并对 `/` 返回 `Cache-Control: no-cache`；每次发版版本号变化即强制浏览器重新拉取前端资源，彻底避免用户停留在旧 bundle（此前两次"点击没反应"反馈均系浏览器缓存旧 JS/CSS 所致）。
+
 ## [3.8.0] — 2026-08-20
 
 ### 前端深化：向 tickflow 高密度量化终端看齐

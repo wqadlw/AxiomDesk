@@ -50,7 +50,7 @@ from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.8.0"
+API_VERSION = "3.8.1"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
