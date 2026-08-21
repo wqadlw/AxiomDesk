@@ -140,6 +140,34 @@
   }
 
   /* ───────── 通用 mini-markdown（用于研报）───────── */
+  /* ───────── 数据源诚实徽标 + 统一占位 ───────── */
+  // 合成/离线判定：兼容后端返回的英文（demo/live/…）与中文（合成/演示/近似…）source 文案。
+  // 注意：demo 个股 provider 返回「内置真实个股(近似基本面)」「合成演示数据(非真实行情)」，
+  // 必须判定为合成，否则会误标成「实时」。
+  const SYNTH_RE = /demo|offline|synthetic|mock|simulat|^none$|unknown|合成|演示|离线|模拟|近似|内置|测试|回退/i;
+  function isSynth(src) {
+    return SYNTH_RE.test(String(src || ""));
+  }
+  function sourceBadge(src) {
+    if (!src) return "";
+    if (isSynth(src)) return `<span class="src-badge synth">合成数据 · 离线演示</span>`;
+    // 裸 token（live/real/online）无信息量，渲染为「实时数据」；具体来源（如「腾讯财经实时行情」）原样展示
+    const label = /^(live|real|online|actual)$/i.test(String(src)) ? "实时数据" : `实时 · ${esc(src)}`;
+    return `<span class="src-badge live">${label}</span>`;
+  }
+  function markSource(sectionId, source) {
+    const head = $(`#${sectionId} .report-head .rh-right`);
+    if (!head) return;
+    const old = head.querySelector(".src-badge");
+    if (old) old.remove();
+    // 以「逐请求 source」为权威：真实反映本视图本请求的数据来源；
+    // 仅当 source 缺失时，才回退到全局 DATA_MODE（来自 /meta），避免把配置态误当成数据态。
+    const eff = (source != null && source !== "") ? source : (DATA_MODE === "live" ? "live" : "demo");
+    head.insertAdjacentHTML("afterbegin", sourceBadge(eff));
+  }
+  const skeleton = (n = 3, h = 140, cls = "c2") =>
+    `<div class="grid ${cls}">${Array.from({ length: n }).map(() => `<div class="card skeleton" style="height:${h}px"></div>`).join("")}</div>`;
+
   function md(text) {
     if (!text) return "";
     const lines = text.split("\n");
@@ -174,19 +202,20 @@
   let currentTicker = "";
   let activeView = "overview";
   let activeArgs = {};
+  let DATA_MODE = null;       // "live" | "demo"（来自 /meta，权威数据源状态）
 
   /* ════════ 导航 ════════ */
   const STANDALONE = {
     sentiment: "sentiment", ladder: "ladder", sector: "sector", digest: "digest",
     screener: "screener", backtest: "backtest", "signal-quality": "signal-quality",
     capital: "capital", risk: "risk", calendar: "calendar", desk: "desk",
-    diagnosis: "diagnosis", research: "research",
+    diagnosis: "diagnosis", research: "research", config: "config",
   };
   const RENDER = {
     sentiment: renderSentiment, ladder: renderLadder, sector: renderSector, digest: renderDigest,
     screener: renderScreener, backtest: renderBacktest, "signal-quality": renderSignalQuality,
     capital: renderCapital, risk: renderRisk, calendar: renderCalendar, desk: renderDesk,
-    diagnosis: renderDiagnosis, research: renderResearch,
+    diagnosis: renderDiagnosis, research: renderResearch, config: loadConfig,
   };
 
   function setCrumb(name) { $("#crumb-cur").textContent = name; }
@@ -314,7 +343,6 @@
     if (tab === "zones") return renderZones(current);
     if (tab === "risks") return renderRisks(current);
     if (tab === "trap") return renderTrap(current);
-    if (tab === "config") return loadConfig();
   }
   function rerenderActive() {
     clearCharts();
@@ -632,6 +660,7 @@
         ], label: { show: true, position: "right", color: c.text, fontSize: 11 } }],
       }));
       refreshDsStatus(d.source);
+      markSource("sentiment", d.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">情绪数据加载失败：${esc(e.message)}</div>`; }
   }
 
@@ -678,6 +707,7 @@
           <div class="card hov"><div class="card-head"><div class="card-title"><span class="st-bar"></span>异动信号</div></div><div class="list">${anom || '<div class="empty-mini">无</div>'}</div></div>
         </div>`;
       refreshDsStatus(d.source);
+      markSource("ladder", d.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">连板数据加载失败：${esc(e.message)}</div>`; }
   }
 
@@ -705,6 +735,7 @@
       }));
       makeSortable($("#tab-sector table"), allBoards, sectorRow);
       refreshDsStatus(d.source);
+      markSource("sector", d.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">板块数据加载失败：${esc(e.message)}</div>`; }
   }
 
@@ -715,6 +746,7 @@
     p.innerHTML = `<div class="card skeleton" style="height:300px"></div>`;
     try {
       const d = await get("/screener", { universe: uni, sort, limit: 30 });
+      markSource("screener", d.source);
       const stocks = d.stocks || [];
       const activeFilter = p.dataset.filter || "";
 
@@ -767,6 +799,7 @@
     p.innerHTML = `<div class="card skeleton" style="height:300px"></div>`;
     try {
       const d = await get("/backtest", { ticker: tk, days: 130 });
+      markSource("backtest", d.source);
       if (!d.available) { p.innerHTML = `<div class="empty-mini">${esc(d.reason || "无数据")}</div>`; return; }
       const eq = d.equity || {};
       const curve = (eq.curve || []);
@@ -855,6 +888,7 @@
         ],
       }));
       refreshDsStatus(ind.source || board.source);
+      markSource("capital", ind.source || board.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">资金数据加载失败：${esc(e.message)}</div>`; }
   }
 
@@ -883,6 +917,7 @@
         </div>`;
       }
       refreshDsStatus(d.source);
+      markSource("risk", d.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">风险扫描失败：${esc(e.message)}</div>`; }
   }
 
@@ -897,6 +932,7 @@
       const head = tk ? `<thead><tr>${th("日期", { num: true })}${th("类型")}${th("详情")}${th("影响")}</tr></thead>` : `<thead><tr>${th("日期", { num: true })}${th("类型")}${th("详情")}${th("影响")}${th("标的")}</tr></thead>`;
       p.innerHTML = `<div class="card">${sectionTitle("财经日历", `未来 ${days} 日 · ${esc(d.source || "")}`, "i-calendar")}${table(head, rows)}</div>`;
       refreshDsStatus(d.source);
+      markSource("calendar", d.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">日历加载失败：${esc(e.message)}</div>`; }
   }
 
@@ -924,6 +960,23 @@
       }));
       const badge = $("#desk-badge"); if (badge) { const n = (ev.items || []).length; if (n) { badge.hidden = false; badge.textContent = n; } else badge.hidden = true; }
     } catch (e) { p.innerHTML = `<div class="empty-mini">加载失败：${esc(e.message)}</div>`; }
+  }
+
+  /* ════════ 自选 · 盘中预警扫描 ════════ */
+  async function checkDeskAlerts() {
+    const btn = $("#desk-refresh");
+    if (!btn) return renderDesk();
+    const oldHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="ico spin"><use href="#i-refresh"/></svg>扫描中…`;
+    try {
+      const r = await fetch(`${API}/monitor/check`, { method: "POST" });
+      if (!r.ok) throw new Error(`${r.status}`);
+      const d = await r.json();
+      const n = (d.new_events || []).length;
+      toast(n ? `扫描完成，新增 ${n} 条盘中预警` : "扫描完成，当前无新增预警");
+    } catch (e) { toast("预警扫描失败：" + e.message, true); }
+    finally { btn.disabled = false; btn.innerHTML = oldHtml; renderDesk(); }
   }
 
   /* ════════ 个股全景诊断 ════════ */
@@ -958,6 +1011,7 @@
           detail: { valueAnimation: true, fontSize: 30, fontWeight: 800, color: "auto", formatter: "{value}", offsetCenter: [0, 0] }, data: [{ value: Math.round(d.composite) }] }],
       }));
       refreshDsStatus(d.source);
+      markSource("diagnosis", d.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">诊断失败：${esc(e.message)}</div>`; }
   }
 
@@ -991,6 +1045,7 @@
       const copy = () => { navigator.clipboard?.writeText(mdText).then(() => toast("已复制 Markdown"), () => toast("复制失败", true)); };
       $("#rr-copy2").addEventListener("click", copy);
       refreshDsStatus(d.source);
+      markSource("research", d.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">研报生成失败：${esc(e.message)}</div>`; }
   }
 
@@ -1012,6 +1067,7 @@
       }).join("");
       p.innerHTML = `<div class="grid c2" style="gap:14px">${blocks}</div>`;
       refreshDsStatus(d.source);
+      markSource("digest", d.source);
     } catch (e) { p.innerHTML = `<div class="empty-mini">速览失败：${esc(e.message)}</div>`; }
   }
 
@@ -1042,15 +1098,23 @@
   }
 
   /* ════════ 数据源状态条 ════════ */
+  let _metaCache = null;
+  async function loadMeta(force) {
+    if (_metaCache && !force) return _metaCache;
+    try { _metaCache = await get("/meta"); } catch { /* 保留上次缓存 */ }
+    return _metaCache;
+  }
   async function refreshDsStatus(force) {
+    const m = await loadMeta(force);
+    if (!m) return;
+    DATA_MODE = m.data_mode === "live" ? "live" : "demo";
     const box = $("#ds-status"); const live = $("#live-badge");
-    let src = force;
-    if (!src) { try { const d = await get("/meta"); src = d.data_source; } catch { return; } }
-    if (!src) return;
-    box.querySelector(".ds-text").textContent = "数据源：" + src;
-    const offline = /demo|offline/i.test(src || "");
-    box.classList.toggle("off", offline); live.classList.toggle("off", offline);
-    live.lastChild.textContent = offline ? "离线" : "实时";
+    if (box) box.querySelector(".ds-text").textContent = "数据源：" + (m.data_source || DATA_MODE);
+    if (live) {
+      const offline = DATA_MODE !== "live";
+      live.classList.toggle("off", offline);
+      live.lastChild.textContent = offline ? "离线" : "实时";
+    }
   }
 
   /* ════════ 通用：可排序表格 ════════ */
@@ -1126,7 +1190,7 @@
     $("#rk-run").addEventListener("click", renderRisk);
     $("#rk-refresh").addEventListener("click", renderRisk);
     $("#cal-refresh").addEventListener("click", renderCalendar);
-    $("#desk-refresh").addEventListener("click", renderDesk);
+    $("#desk-refresh").addEventListener("click", checkDeskAlerts);
     $("#dx-run").addEventListener("click", renderDiagnosis);
     $("#rr-run").addEventListener("click", renderResearch);
   }

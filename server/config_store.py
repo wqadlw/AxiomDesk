@@ -177,3 +177,25 @@ def effective_data_source() -> str:
     if env:
         return env.lower()
     return get_config().get("data_source", "auto")
+
+
+def is_live_data() -> bool:
+    """当前是否真正接入了可用的实时数据源（而非确定性合成回退）。
+
+    判定：effective_data_source 为 demo → 否；为 auto → 仅当存在任一
+    已启用、已安装、且（若需 token 则已配置 token）的 provider 时为真；
+    为具体 provider id → 该 provider 满足上述条件时为真。否则为假（合成）。
+    前端据此展示「合成数据 · 离线演示」诚实徽标，避免把回退数据伪装成实时。
+    """
+    ds = effective_data_source()
+    if ds == "demo":
+        return False
+    if ds == "auto":
+        for p in provider_status():
+            if p["enabled"] and p["installed"] and (not p["requires_token"] or p["has_token"]):
+                return True
+        return False
+    for p in provider_status():
+        if p["id"] == ds and p["enabled"] and p["installed"] and (not p["requires_token"] or p["has_token"]):
+            return True
+    return False

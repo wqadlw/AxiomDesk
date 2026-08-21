@@ -50,7 +50,7 @@ from ..services import watchlist as WL
 from .errors import BadRequestError, NotFoundError
 from .schemas import AnalyzeParams
 
-API_VERSION = "3.8.1"
+API_VERSION = "3.9.0"
 
 # 无前缀路由，由 app 分别 include 到 /api 与 /api/v1
 router = APIRouter()
@@ -86,6 +86,10 @@ def _meta():
         ],
         "dimension_keys": list(INV.DIM_SCORERS.keys()),
         "data_source": _current_data_source(),
+        # data_mode 反映「市场快照真实来源」：市场数据来自公开 token-free 接口，
+        # 与个股 provider 配置无关。以实际拉取结果（live/demo）为准，避免把
+        # 合成回退误报为实时。get_market_context 内部 60s TTL 缓存，开销可控。
+        "data_mode": _resolve_data_mode(),
     }
 
 
@@ -94,6 +98,18 @@ def _current_data_source() -> str:
         return effective_data_source()
     except Exception:
         return "unknown"
+
+
+def _resolve_data_mode() -> str:
+    """以「市场快照真实来源」判定全局数据模式，而非个股 provider 配置态。
+
+    市场数据来自公开 token-free 接口（东财/腾讯），与 akshare/tushare 等
+    个股 provider 是否安装无关；合成回退时务必报 demo，避免把离线数据伪装成实时。
+    """
+    try:
+        return "live" if DP.get_market_context().get("source") == "live" else "demo"
+    except Exception:
+        return "demo"
 
 
 # ── 同步分析（落库）──
